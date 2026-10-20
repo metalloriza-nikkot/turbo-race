@@ -72,6 +72,12 @@ Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 �
 - Testat hela vägen: skapa spelare → turnering → lopp 1 → Esc mitt i lopp 2 → spara → töm webbläsaren → ladda filen → fortsätt → lopp 2 räknas vidare på rätt poäng.
 - Detta är förberedelsen för att flytta spelet till GitHub Pages (profilen flyttas med en sparfil).
 
+## Repo och webbapp (2026-10-20)
+- Koden ligger i GitHub: https://github.com/metalloriza-nikkot/turbo-race (src/, tests/, pwa/, build.py, CLAUDE.md).
+- Webbappen publiceras automatiskt till https://metalloriza-nikkot.github.io/turbo-race/ vid varje push till main (Actions-flödet `Bygg och publicera spelet`). Kräver att Pages-källan är satt till *GitHub Actions* i repots inställningar.
+- Offline: service worker med versionerad cache (`turbo-<version>-<hash>`); testat att spelet startar utan nät (`tests/test_offline_pwa.py`). Ny version laddas i bakgrunden och visas efter omstart.
+- Flytta Liams framsteg: SPARA SPEL i filversionen → LADDA SPEL i webbappen (en gång per enhet).
+
 ## Förslag framåt
 ### C. En röd tråd (v17)
 - Karta över Turbo-världen, Kapten Krut som rival, brev i brevlådan och ett samlingsalbum.
