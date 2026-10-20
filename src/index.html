@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TURBO-RACE</title>
+<style>
+:root { --bg1: #2b1a6b; --bg2: #0d47a1; --yellow: #ffd600; --ink: #1a1033; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1033; font-family: "Arial Rounded MT Bold", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif; color: #fff; user-select: none; -webkit-user-select: none; }
+canvas#game { position: fixed; inset: 0; display: block; }
+#ui { position: fixed; inset: 0; display: none; }
+#ui.on { display: block; }
+#topbar { position: fixed; top: 14px; right: 16px; display: flex; gap: 10px; z-index: 5; }
+#ui:not(.on) ~ #topbar { display: none; }
+#topbar button { font: inherit; font-size: 22px; background: rgba(255,255,255,0.92); color: var(--ink); border: 0; border-radius: 16px; padding: 8px 14px; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+#topbar button.off { opacity: 0.45; text-decoration: line-through; }
+.screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 70px 24px 30px; background: radial-gradient(ellipse at center, rgba(20,10,60,0.25), rgba(20,10,60,0.7)); }
+.screen.on { display: flex; animation: pop .25s ease-out; }
+/* Skärmar som inte får plats går att skrolla. Spacers centrerar när det finns plats, men skär aldrig av toppen när det blir trångt. */
+.screen { justify-content: flex-start; overflow-y: auto; overflow-x: hidden; padding-top: 78px; padding-bottom: 22px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.5) transparent; overscroll-behavior: contain; }
+.screen::before, .screen::after { content: ''; flex: 1 0 0; } .screen::before { margin-bottom: -22px; } .screen::after { margin-top: -22px; }
+.screen > * { flex-shrink: 0; }
+#more-hint { position: fixed; right: 10px; top: 50%; z-index: 6; display: none; font-size: 15px; line-height: 1.15; text-align: center; font-weight: bold; color: var(--ink); background: var(--yellow); border-radius: 18px; padding: 8px 10px; box-shadow: 0 4px 0 #e65100; pointer-events: auto; cursor: pointer; animation: hintbob 0.9s infinite alternate ease-in-out; }
+#more-hint.on { display: block; }
+.ldbox { background: #fffdf5; color: var(--ink); border-radius: 22px; border: 6px solid var(--yellow); padding: 18px 34px; font-size: 26px; line-height: 1.5; text-align: center; min-width: min(560px, 90vw); }
+.ldbox .ld-name { font-size: 46px; font-weight: bold; } .ldbox .ld-small { font-size: 16px; opacity: 0.7; }
+.card.hub .badge { position: absolute; top: -12px; right: -10px; background: #ff4081; color: #fff; font-size: 15px; font-weight: bold; padding: 4px 10px; border-radius: 12px; transform: rotate(8deg); box-shadow: 0 3px 0 #880e4f; }
+/* Knappraden längst ned (resultat, körskola, pokal, fråga) ligger alltid kvar i bild – innehållet skrollar bakom */
+.screen > .row.actions { position: sticky; bottom: -22px; z-index: 4; width: calc(100% + 48px); max-width: none; margin: 0 -24px; padding: 14px 24px 22px; box-sizing: border-box; background: linear-gradient(rgba(15,8,45,0), rgba(15,8,45,0.92) 38%); }
+@keyframes hintbob { to { transform: translateY(-5px); } }
+/* Kompaktare rutnät för skärmar med många kort */
+#opps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 16px; width: min(1500px, 96vw); }
+.card.opp { width: 100%; box-sizing: border-box; display: grid; grid-template-columns: 72px 1fr; grid-auto-rows: auto; column-gap: 12px; row-gap: 0; align-items: center; justify-items: start; padding: 8px 12px; border-radius: 20px; border-width: 5px; box-shadow: 0 6px 0 var(--c, #9e9e9e); }
+.card.opp canvas, .card.opp .bigico { grid-row: span 2; width: 72px !important; height: 72px !important; justify-self: center; } .card.opp .lbl { font-size: 21px; text-align: left; align-self: end; } .card.opp .sub { align-self: start; font-size: 15px; } .card.opp.pre .lbl { grid-row: span 2; align-self: center; }
+.card.opp.add .bigico { font-size: 56px; line-height: 1; text-align: center; }
+.optitle { grid-column: 1 / -1; justify-self: start; font-size: 22px; opacity: 0.85; margin: 4px 0 -6px 6px; }
+#school-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; width: min(1560px, 96vw); justify-items: center; }
+.card.chal { width: 100%; max-width: 190px; box-sizing: border-box; } .card.chal .lbl { font-size: 16px !important; }
+#scr-result, #scr-pause, #scr-cup { background: radial-gradient(ellipse at center, rgba(40,20,110,0.88), rgba(15,8,45,0.96)); }
+.card.cup { background: linear-gradient(160deg, #fff8d6, #ffe082); --c: #ffb300; justify-content: center; min-width: 250px; }
+.card.cup .cupico { font-size: 110px; line-height: 1.15; filter: drop-shadow(0 6px 6px rgba(0,0,0,0.3)); }
+.card.cup .cupsub { font-size: 18px; opacity: 0.8; }
+.big .cups { font-size: 0.7em; }
+#podium { width: min(900px, 92vw, calc((100vh - 300px) * 1.6)); height: auto; }
+.cupsubtxt { font-size: 36px; color: var(--yellow); text-shadow: 0 4px 0 var(--ink); }
+.res-row .nm { min-width: 170px; } .res-row .gain { width: 70px; text-align: right; color: #76ff03; } .res-row.me .gain { color: #1b5e20; } .res-row .tot { width: 90px; text-align: right; font-size: 30px; }
+.res-row.hdr { font-size: 16px; opacity: 0.7; }
+@keyframes pop { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+h1.logo { margin: 0; font-size: clamp(64px, 12vw, 150px); line-height: 1; letter-spacing: 2px; color: var(--yellow); text-shadow: 0 6px 0 #e65100, 0 12px 0 #3e1f00, 0 14px 30px rgba(0,0,0,0.6); transform: rotate(-3deg); font-style: italic; }
+h1.logo span { color: #ff5252; }
+h2 { margin: 0; font-size: clamp(40px, 6vw, 72px); color: #fff; text-shadow: 0 5px 0 var(--ink), 0 8px 20px rgba(0,0,0,0.5); }
+.row { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: center; max-width: 1450px; }
+button.nav { font-family: inherit; cursor: pointer; border: 0; outline: none; transition: transform .12s, box-shadow .12s; }
+.big { font-size: clamp(30px, 3.6vw, 46px); padding: 18px 34px; border-radius: 26px; background: #fff; color: var(--ink); box-shadow: 0 7px 0 #9e9e9e; display: flex; align-items: center; gap: 14px; }
+.big.go { background: #76ff03; box-shadow: 0 7px 0 #33691e; }
+.big.name { background: #40c4ff; box-shadow: 0 7px 0 #01579b; }
+.big .ico { font-size: 1.1em; }
+.small { font-size: 26px; padding: 12px 22px; border-radius: 18px; background: rgba(255,255,255,0.85); color: var(--ink); box-shadow: 0 5px 0 rgba(0,0,0,0.3); }
+.small.del { background: #ffcdd2; }
+button.nav:focus, button.nav:hover { transform: scale(1.08) translateY(-3px); box-shadow: 0 0 0 7px var(--yellow), 0 10px 26px rgba(0,0,0,0.5); z-index: 2; }
+.card { background: #fff; color: var(--ink); border-radius: 28px; padding: 12px 12px 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: 0 8px 0 var(--c, #9e9e9e); border: 6px solid var(--c, #ddd); position: relative; }
+.card canvas { width: 176px; height: auto; border-radius: 18px; background: radial-gradient(circle, #e8eaf6, #c5cae9); }
+.card.wide canvas { width: 250px; }
+.card .lbl { font-size: 30px; }
+.card .ico { font-size: 28px; }
+#driver-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 16px; width: min(1440px, 96vw); justify-items: center; }
+#driver-grid .card { width: 100%; max-width: 210px; box-sizing: border-box; } #driver-grid .card canvas { width: 100%; } #driver-grid .card .lbl { font-size: 22px; white-space: nowrap; }
+.res-row canvas.carcv { width: 120px; height: 66px; margin: -6px 0; }
+.card .by { font-size: 14px; font-weight: bold; color: #6d4c41; margin-top: -6px; letter-spacing: 1px; }
+.card .medal { position: absolute; top: -18px; right: -14px; font-size: 54px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.4)); }
+.card.diff { width: 250px; padding: 24px; }
+.card.diff .bigico { font-size: 110px; line-height: 1.1; }
+input#name-in { font: inherit; font-size: 56px; padding: 14px 24px; border-radius: 22px; border: 6px solid var(--yellow); width: min(600px, 90vw); text-align: center; text-transform: uppercase; color: var(--ink); outline: none; }
+.backbtn { position: fixed; left: 18px; top: 14px; z-index: 6; }
+#title-cars { width: min(880px, 92vw); height: auto; }
+.hint { font-size: 20px; opacity: 0.85; text-align: center; }
+.kbd { display: inline-block; background: #fff; color: var(--ink); border-radius: 8px; padding: 2px 10px; box-shadow: 0 3px 0 #999; margin: 0 3px; }
+#res-medal { font-size: 120px; line-height: 1; animation: bounce 1s infinite alternate ease-in-out; }
+@keyframes bounce { to { transform: translateY(-14px) rotate(6deg); } }
+#res-sub { font-size: 44px; color: var(--yellow); text-shadow: 0 4px 0 var(--ink); }
+#res-comment { font-size: 22px; max-width: 900px; text-align: center; background: rgba(10,5,30,0.55); border-radius: 16px; padding: 8px 18px; line-height: 1.35; }
+#res-comment:empty { display: none; }
+#res-comment b { color: var(--yellow); }
+#res-sub.dbl::after { content: '  ✖2 DUBBLA POÄNG!'; color: #ff80ab; }
+#res-list { display: flex; flex-direction: column; gap: 6px; background: rgba(0,0,0,0.3); padding: 12px 18px; border-radius: 22px; }
+.res-row { display: flex; align-items: center; gap: 14px; font-size: 26px; padding: 2px 12px; border-radius: 14px; }
+.res-row.me { background: var(--yellow); color: var(--ink); }
+.res-row b { width: 34px; text-align: center; font-size: 30px; }
+.res-row canvas { width: 88px; height: 48px; }
+#hub-head { display: flex; align-items: center; gap: 22px; }
+.hubname { font-size: 56px; text-shadow: 0 5px 0 var(--ink); }
+.coins { font-size: 38px; color: var(--yellow); text-shadow: 0 4px 0 var(--ink); }
+.card.hub { width: 210px; padding: 18px 10px; }
+.card.hub .bigico { font-size: 76px; line-height: 1.1; } .card.hub .lbl { font-size: 24px; }
+.card.hub.go { --c: #43a047; } .card.hub.gold { --c: #ffb300; background: linear-gradient(160deg, #fff8d6, #ffe082); }
+.big.name { padding: 10px 26px 10px 12px; }
+.big .nm { margin-left: 4px; }
+.figwrap { display: flex; gap: 30px; align-items: center; }
+#fig-canvas { width: 330px; height: auto; background: radial-gradient(circle, #e8eaf6, #9fa8da); border-radius: 30px; border: 6px solid #fff; }
+.figside { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+#fig-rows { display: flex; flex-direction: column; gap: 6px; }
+.figrow { display: flex; align-items: center; gap: 10px; }
+.figlbl { width: 230px; text-align: center; font-size: 26px; background: rgba(255,255,255,0.15); border-radius: 14px; padding: 4px 8px; }
+.figlbl small { display: block; font-size: 13px; opacity: 0.75; }
+button.arrow { font-size: 26px; width: 58px; height: 50px; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 4px 0 #9e9e9e; }
+#opp-name { font: inherit; font-size: 34px; padding: 8px 16px; border-radius: 16px; border: 5px solid var(--yellow); width: 330px; text-align: center; text-transform: uppercase; color: var(--ink); outline: none; }
+.card.opp .sub { opacity: 0.7; }
+.card.opp.add { --c: #43a047; } .card.opp.add .bigico { color: #43a047; } .card.opp.pre { opacity: 0.85; --c: #9e9e9e; }
+.shopwrap { display: flex; gap: 24px; align-items: center; max-width: 1400px; }
+#shop-car { width: 240px; height: 240px; background: radial-gradient(circle, #e8eaf6, #9fa8da); border-radius: 30px; border: 6px solid #fff; flex: none; }
+#shop-grid { max-width: 1050px; }
+.card.shopitem { width: 150px; padding: 10px; } .card.shopitem .lbl { font-size: 18px; } .card.shopitem.eq { --c: #43a047; }
+.swatch { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 0 3px #ccc; } .swatch.ico { font-size: 48px; border: 0; box-shadow: none; line-height: 70px; text-align: center; }
+canvas.stk { width: 70px; height: 70px; }
+.price { font-size: 18px; font-weight: bold; } .price.eq { color: #2e7d32; } .price.own { color: #1565c0; }
+button.tab.sel { background: var(--yellow); }
+.card.chal { padding: 14px 10px; } .card.chal .bigico { font-size: 64px; line-height: 1.1; } .card.chal .lbl { font-size: 18px; min-height: 44px; display: flex; align-items: center; text-align: center; }
+.card.chal .stars { font-size: 30px; color: #ffb300; letter-spacing: 2px; } .card.chal .num { position: absolute; top: 6px; left: 12px; font-size: 20px; opacity: 0.5; }
+.card.chal.locked { opacity: 0.55; filter: grayscale(0.8); }
+.bigstars { font-size: 130px; letter-spacing: 10px; color: rgba(255,255,255,0.2); }
+.bigstars span { display: inline-block; } .bigstars span.on { color: #ffd600; text-shadow: 0 6px 0 #e65100; animation: starpop .5s both; }
+@keyframes starpop { from { transform: scale(0) rotate(-90deg); } to { transform: scale(1) rotate(0); } }
+.license { width: min(820px, 92vw); background: linear-gradient(135deg, #fffde7, #ffe0b2); color: var(--ink); border-radius: 26px; border: 10px solid #1e88e5; box-shadow: 0 12px 40px rgba(0,0,0,0.5); overflow: hidden; }
+.lichead { background: #1e88e5; color: #fff; font-size: 44px; text-align: center; padding: 10px; letter-spacing: 3px; }
+.licbody { display: flex; align-items: center; gap: 24px; padding: 24px; position: relative; }
+.licface { border-radius: 20px; background: #e3f2fd; border: 5px solid #1e88e5; }
+.lictext { padding-right: 130px; } .licname { font-size: 60px; color: #1565c0; } .licline { font-size: 22px; margin: 8px 0; } .licstars { font-size: 30px; color: #e65100; } .licdate { font-size: 18px; opacity: 0.7; margin-top: 6px; }
+.stamp { position: absolute; right: 26px; bottom: 20px; border: 6px solid #e53935; color: #e53935; border-radius: 50%; width: 130px; height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 22px; transform: rotate(-14deg); opacity: 0.85; text-align: center; }
+canvas.facecv { flex: none; }
+.res-row .facecv { width: 46px; height: 46px; }
+#quiz-q { font-size: 110px; font-weight: bold; color: #fff; text-shadow: 0 6px 0 var(--ink); line-height: 1; text-align: center; }
+#quiz-typed { font-size: 34px; color: var(--yellow); min-height: 40px; }
+#quiz-msg { font-size: 40px; min-height: 50px; color: #fff; } #quiz-msg .ok { color: #76ff03; }
+.card.quizopt { min-width: 170px; } .card.quizopt .lbl { font-size: 64px; }
+#quiz-vis { display: flex; align-items: flex-end; justify-content: center; gap: 14px; flex-wrap: wrap; min-height: 10px; max-width: 90vw; }
+#quiz-vis .grp { display: flex; align-items: flex-end; gap: 4px; flex-wrap: wrap; max-width: 420px; background: rgba(255,255,255,0.12); padding: 8px; border-radius: 12px; }
+#quiz-vis .ten { width: 14px; height: 100px; background: repeating-linear-gradient(#ffd600 0 8px, #f9a825 8px 10px); border-radius: 4px; }
+#quiz-vis .one { width: 16px; height: 16px; border-radius: 50%; background: #40c4ff; }
+#quiz-vis .opv { font-size: 48px; color: #fff; font-weight: bold; }
+.card.bonusopt { min-width: 230px; } .card.bonusopt .bigico { font-size: 90px; line-height: 1.1; } .card.bonusopt .lbl { font-size: 30px; } .card.bonusopt .stars { font-size: 30px; color: #f9a825; }
+.card.hub.mini { transform: scale(0.8); opacity: 0.85; }
+#pin-in { font-size: 48px; width: 220px; text-align: center; letter-spacing: 16px; border-radius: 16px; border: 4px solid var(--yellow); padding: 8px; font-family: inherit; }
+#par-body { background: #fffdf5; color: #1a1033; border-radius: 22px; padding: 18px 26px; width: min(1150px, 94vw); max-height: calc(100vh - 230px); overflow: auto; text-align: left; font-family: Arial, sans-serif; font-size: 16px; }
+#par-body .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+#par-body .pbox { background: #fff; border: 2px solid #eee4d0; border-radius: 16px; padding: 12px 16px; }
+#par-body h3 { margin: 4px 0 8px; font-size: 19px; } #par-body .big { font-size: 28px; font-weight: bold; color: #e65100; }
+#par-body .muted { color: #78909c; font-size: 14px; margin: 4px 0; } #par-body table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+#par-body td { padding: 4px 2px; border-bottom: 1px solid #f1ebe0; } #par-body td:last-child { text-align: right; font-weight: bold; }
+#par-body .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; } #par-body .chip { padding: 4px 10px; border-radius: 12px; font-weight: bold; }
+#par-body .chip.bad { background: #ffebee; color: #c62828; } #par-body .chip.ok { background: #e8f5e9; color: #2e7d32; }
+#par-body label { display: block; margin: 8px 0; font-weight: bold; } #par-body input, #par-body textarea { display: block; width: 100%; font-size: 18px; padding: 6px; border-radius: 8px; border: 2px solid #ddd; margin-top: 4px; box-sizing: border-box; }
+#par-body #par-letter { width: 70px; text-align: center; font-size: 26px; } #par-body .prow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#par-body .pbtn { font-size: 16px; padding: 6px 12px; border-radius: 10px; border: 2px solid #ccc; background: #fafafa; cursor: pointer; margin: 2px; }
+#par-body .pbtn.on { background: #ffd600; border-color: #f9a825; } #par-body .pbtn.go { background: #76ff03; } #par-body .pbtn.warn { color: #c62828; }
+@media (max-width: 900px) { #par-body .pgrid { grid-template-columns: 1fr; } }
+@media print { body { background: #fff; } body * { visibility: hidden; } .license, .license * { visibility: visible; } #scr-parent.on #par-body, #scr-parent.on #par-body * { visibility: visible; } #scr-parent.on #par-body { position: absolute; left: 0; top: 0; max-height: none; overflow: visible; box-shadow: none; } .noprint, .noprint * { visibility: hidden !important; display: none; } .license { position: fixed; left: 5%; top: 10%; width: 90%; box-shadow: none; } #game { display: none; } }
+@media (max-height: 800px) { #fig-canvas { width: 250px; } .figlbl { font-size: 21px; padding: 2px 8px; width: 210px; } .figlbl small { font-size: 11px; } button.arrow { height: 42px; width: 52px; } #fig-rows { gap: 4px; } #opp-name { font-size: 28px; padding: 4px 14px; } .figside .big { font-size: 30px; padding: 12px 26px; }
+  .card.chal { padding: 10px 8px; } .card.chal .bigico { font-size: 50px; } .card.chal .stars { font-size: 24px; } .card.hub { padding: 12px 10px; } .card.hub .bigico { font-size: 62px; } h2 { font-size: clamp(36px, 5vw, 60px); } }
+@media (max-height: 700px) { #driver-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } #driver-grid .card { max-width: 165px; padding: 8px 8px 10px; } #driver-grid .card .lbl { font-size: 18px; } }
+@media (max-height: 680px) { #res-medal { font-size: 56px; } .res-row { font-size: 21px; } .res-row canvas { width: 70px; height: 38px; } #res-sub { font-size: 34px; } #res-list { gap: 2px; padding: 8px 14px; } .card.opp canvas { width: 56px !important; height: 56px !important; } .card.opp { grid-template-columns: 56px 1fr; padding: 4px 10px; } #fig-canvas { width: 200px; } .figlbl { font-size: 18px; } .figlbl small { display: none; } button.arrow { height: 36px; } .card.chal .bigico { font-size: 40px; } .card.chal .lbl { min-height: 36px; } }
+@media (max-height: 800px) and (max-width: 1150px) { .card canvas { width: 130px; } .card .lbl { font-size: 24px; } }
+@media (max-height: 760px) { .card canvas { width: 160px; } .card.wide canvas { width: 230px; } .screen { gap: 14px; } #res-medal { font-size: 80px; } .card.diff .bigico { font-size: 80px; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <section class="screen" id="scr-title" data-say="Turbo race!">
+    <h1 class="logo">TURBO<span>-</span>RACE</h1>
+    <canvas id="title-cars" width="880" height="140"></canvas>
+    <div class="row" id="name-row"></div>
+    <div class="hint"><span class="kbd">▲</span> gas · <span class="kbd">▼</span> back · <span class="kbd">◀</span><span class="kbd">▶</span> sväng · <span class="kbd">MELLANSLAG</span> power-up · välj med <span class="kbd">ENTER</span> · <span class="kbd">F</span> = helskärm</div>
+  </section>
+  <section class="screen" id="scr-name" data-say="Skriv ditt namn">
+    <button class="nav small backbtn" id="name-back" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>VAD HETER DU?</h2>
+    <input id="name-in" maxlength="12" autocomplete="off" spellcheck="false">
+    <button class="nav big go" id="name-ok" data-say="Klar">✔ KLAR</button>
+    <div class="row" id="name-list"></div>
+  </section>
+  <section class="screen" id="scr-hub" data-say="Vad vill du göra?">
+    <button class="nav small backbtn" data-say="Byt spelare">◀ BYT SPELARE</button>
+    <div id="hub-head"></div>
+    <div class="row" id="hub-grid"></div>
+  </section>
+  <section class="screen" id="scr-fig">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2 id="fig-title">MIN FIGUR</h2>
+    <div class="figwrap">
+      <canvas id="fig-canvas" width="440" height="520"></canvas>
+      <div class="figside">
+        <div id="opp-name-row"><input id="opp-name" maxlength="12" placeholder="NAMN" autocomplete="off" spellcheck="false"></div>
+        <div id="fig-rows"></div>
+        <div class="row">
+          <button class="nav big" id="fig-rand" data-say="Slumpa">🎲 SLUMPA</button>
+          <button class="nav big go" id="fig-ok" data-say="Klar">✔ KLAR</button>
+          <button class="nav small del" id="fig-del" data-say="Ta bort">✖ TA BORT</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="screen" id="scr-opps" data-say="Motståndare. Lägg till egna!">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>MOTSTÅNDARE</h2>
+    <div class="row" id="opps-grid"></div>
+  </section>
+  <section class="screen" id="scr-shop" data-say="Butiken">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>🛒 BUTIK <span id="shop-coins" class="coins"></span></h2>
+    <div class="row" id="shop-tabs">
+      <button class="nav small tab" data-tab="paint" data-say="Lack">🎨 LACK</button>
+      <button class="nav small tab" data-tab="sticker" data-say="Dekaler">⭐ DEKALER</button>
+      <button class="nav small tab" data-tab="horn" data-say="Tutor">📯 TUTOR</button>
+    </div>
+    <div class="shopwrap"><canvas id="shop-car" width="300" height="300"></canvas><div class="row" id="shop-grid"></div></div>
+  </section>
+  <section class="screen" id="scr-quiz">
+    <h2 id="quiz-title">RÄKNA!</h2>
+    <div id="quiz-story" class="cupsubtxt"></div>
+    <div id="quiz-q"></div>
+    <div id="quiz-vis"></div>
+    <div id="quiz-typed"></div>
+    <div class="row" id="quiz-opts"></div>
+    <div id="quiz-msg"></div>
+    <div class="row actions"><button class="nav small" id="quiz-help" data-say="Hjälp">💡 HJÄLP</button><button class="nav small" id="quiz-skip" data-say="Hoppa över">⏭️ HOPPA ÖVER</button></div>
+  </section>
+  <section class="screen" id="scr-bonus">
+    <h2 id="bonus-title">BONUSMYNT!</h2>
+    <div class="cupsubtxt">VÄLJ EN FRÅGA</div>
+    <div class="row" id="bonus-opts"></div>
+  </section>
+  <section class="screen" id="scr-garage" data-say="Mitt garage">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>🚗 MITT GARAGE</h2>
+    <div class="row" id="garage-grid"></div>
+  </section>
+  <section class="screen" id="scr-pin" data-say="För föräldrar">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>🔒 FÖR FÖRÄLDRAR</h2>
+    <div id="pin-msg" class="cupsubtxt"></div>
+    <input id="pin-in" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+    <button class="nav big go" id="pin-ok" data-say="OK">OK</button>
+  </section>
+  <section class="screen" id="scr-parent">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>👪 FÖRÄLDRAVY</h2>
+    <div id="par-body"></div>
+  </section>
+  <section class="screen" id="scr-city" data-say="Turbostaden! Vad vill du göra?">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>🏙️ TURBOSTADEN</h2>
+    <div id="city-sub" class="cupsubtxt"></div>
+    <div class="row" id="city-grid"></div>
+  </section>
+  <section class="screen" id="scr-school" data-say="Körskolan! Välj en utmaning.">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>🚦 KÖRSKOLAN</h2>
+    <div id="school-sub" class="cupsubtxt"></div>
+    <div class="row" id="school-grid"></div>
+  </section>
+  <section class="screen" id="scr-sres">
+    <div id="sres-stars" class="bigstars"></div>
+    <h2 id="sres-title">BRA!</h2>
+    <div id="sres-msg" class="cupsubtxt"></div>
+    <div class="row actions">
+      <button class="nav big go" id="s-lic" data-say="Se körkortet!" style="display:none">🪪 SE KÖRKORTET!</button>
+      <button class="nav big go" id="s-next" data-say="Nästa utmaning">▶ NÄSTA</button>
+      <button class="nav big" id="s-again" data-say="Försök igen">↻ IGEN</button>
+      <button class="nav big" id="s-menu" data-say="Körskolan">🚦 KÖRSKOLAN</button>
+    </div>
+  </section>
+  <section class="screen" id="scr-license" data-say="Ditt körkort!">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <div class="license">
+      <div class="lichead">🏁 TURBO-KÖRKORT 🏁</div>
+      <div class="licbody">
+        <div id="lic-face"></div>
+        <div class="lictext">
+          <div id="lic-name" class="licname">LIAM</div>
+          <div class="licline">har klarat alla utmaningar i TURBO-RACE Körskolan och får köra alla bilar på alla banor.</div>
+          <div id="lic-stars" class="licstars"></div>
+          <div id="lic-date" class="licdate"></div>
+        </div>
+        <div class="stamp">GODKÄND<br>★</div>
+      </div>
+    </div>
+    <button class="nav big go" id="lic-print" data-say="Skriv ut">🖨️ SKRIV UT</button>
+  </section>
+  <section class="screen" id="scr-driver" data-say="Välj bil">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>VÄLJ BIL</h2>
+    <div class="row" id="driver-grid"></div>
+  </section>
+  <section class="screen" id="scr-track" data-say="Välj bana">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>VÄLJ BANA</h2>
+    <div class="row" id="track-grid"></div>
+  </section>
+  <section class="screen" id="scr-diff" data-say="Hur snabbt?">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>HUR SNABBT?</h2>
+    <div class="row" id="diff-grid"></div>
+  </section>
+  <section class="screen" id="scr-pause" data-say="Paus">
+    <h2>PAUS</h2>
+    <div class="row">
+      <button class="nav big go" id="p-resume" data-say="Fortsätt" data-default="1">▶ FORTSÄTT</button>
+      <button class="nav big" id="p-restart" data-say="Börja om">↻ BÖRJA OM</button>
+      <button class="nav big" id="p-save" data-say="Spara spel">💾 SPARA SPEL</button>
+      <button class="nav big" id="p-menu" data-say="Meny">🏠 MENY</button>
+    </div>
+  </section>
+  <section class="screen" id="scr-load" data-say="Ladda spel">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>📂 LADDA SPEL?</h2>
+    <div id="ld-info" class="ldbox"></div>
+    <div class="hint">Det du har nu sparas som reserv och kan ångras i föräldravyn.</div>
+    <div class="row actions">
+      <button class="nav big go" id="ld-ok" data-say="Ja, ladda" data-default="1">✔ JA, LADDA</button>
+      <button class="nav big" id="ld-cancel" data-say="Avbryt">✖ AVBRYT</button>
+    </div>
+  </section>
+  <section class="screen" id="scr-cupresume" data-say="">
+    <button class="nav small backbtn" data-say="Tillbaka">◀ TILLBAKA</button>
+    <h2>🏆 TURNERINGEN ÄR INTE KLAR</h2>
+    <div id="cr-info" class="cupsubtxt"></div>
+    <div class="hint">BIL: <b id="cr-car"></b></div>
+    <div class="row actions">
+      <button class="nav big go" id="cr-go" data-say="Fortsätt turneringen" data-default="1">▶ FORTSÄTT</button>
+      <button class="nav big" id="cr-new" data-say="Ny turnering">🏆 NY TURNERING</button>
+    </div>
+  </section>
+  <section class="screen" id="scr-result">
+    <div id="res-medal">🥇</div>
+    <h2 id="res-title">BRA JOBBAT!</h2>
+    <div id="res-sub"></div>
+    <div id="res-comment"></div>
+    <div id="res-list"></div>
+    <div class="row actions">
+      <button class="nav big go" id="r-next" data-say="Nästa bana" data-default="1" style="display:none">▶ NÄSTA BANA</button>
+      <button class="nav big go nocup" id="r-again" data-say="Kör igen" data-default="1">↻ KÖR IGEN</button>
+      <button class="nav big nocup" id="r-track" data-say="Ny bana">🗺️ NY BANA</button>
+      <button class="nav big" id="r-menu" data-say="Meny">🏠 MENY</button>
+    </div>
+  </section>
+  <section class="screen" id="scr-cup">
+    <h2 id="cup-title">MÄSTARE!</h2>
+    <div id="cup-sub" class="cupsubtxt"></div>
+    <canvas id="podium" width="900" height="560"></canvas>
+    <div class="row actions">
+      <button class="nav big go" id="c-again" data-say="Ny turnering" data-default="1">🏆 NY TURNERING</button>
+      <button class="nav big" id="c-menu" data-say="Meny">🏠 MENY</button>
+    </div>
+  </section>
+</div>
+<input type="file" id="load-file" accept=".json,application/json" style="display:none">
+<div id="more-hint" title="Det finns mer längre ned – skrolla eller använd piltangenterna">MER<br>▼</div>
+<div id="topbar">
+  <button class="nav" id="b-sfx" title="Ljudeffekter på/av" data-say="Ljud">🔊</button>
+  <button class="nav" id="b-music" title="Musik på/av" data-say="Musik">🎵</button>
+  <button class="nav" id="b-voice" title="Uppläsning på/av" data-say="Röst">🗣️</button>
+  <button class="nav" id="b-show" title="TV-kommentatorer på/av" data-say="TV-kommentatorer">🎙️</button>
+  <button class="nav" id="b-steer" title="Kamera: följ bilen eller fast" data-say="Kamera">📷 FÖLJ BIL</button>
+  <button class="nav" id="b-full" title="Helskärm (F)" data-say="Helskärm">⛶</button>
+</div>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>
