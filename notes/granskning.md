@@ -1,4 +1,4 @@
-# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-19, v16.6)
+# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.8)
 
 Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 år) sker utan att barnet tänker på det.
 
