@@ -1,4 +1,4 @@
-# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.10)
+# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.11)
 
 Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 år) sker utan att barnet tänker på det.
 
@@ -71,6 +71,9 @@ Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 �
 - **Turneringen sparas automatiskt** i början av varje lopp och efter varje målgång. Klickar man TURNERING med en ofärdig turnering får man välja ▶ FORTSÄTT (bana X av 7, poäng hittills) eller NY TURNERING. Hubben visar en PÅGÅR-etikett. Avbryts ett lopp mitt i börjar man om just det loppet nästa gång – poängen från tidigare banor finns kvar.
 - Testat hela vägen: skapa spelare → turnering → lopp 1 → Esc mitt i lopp 2 → spara → töm webbläsaren → ladda filen → fortsätt → lopp 2 räknas vidare på rätt poäng.
 - Detta är förberedelsen för att flytta spelet till GitHub Pages (profilen flyttas med en sparfil).
+
+## v16.11 – Målgången syns på minikartan (2026-10-21)
+- Önskemål från Niklas: för att kunna köra taktiskt (t.ex. spara superturbon till upploppet) behöver man se hur långt det är kvar. Minikartan har nu en rutig mållinje tvärs över banan och en 🏁-flagga bredvid (på den sida där den inte täcker banan). Gäller alla banor, även egna.
 
 ## v16.10 – Ryckningar: analys av Niklas logg och automatisk upplösning (2026-10-21)
 - **Loggen (Windows, Chrome 155, 1920×945):** snitt 26,8 ms per bildruta (ca 37 bilder/s) men bara 3 ms i spelkoden. 56 ryck på 83–833 ms, alla med 2–6 ms spelkod och utan röst. Alltså: tiden går åt till att rita (grafikkort/webbläsare), inte till spelets logik. Finalbanan hade nästan inga ryck.

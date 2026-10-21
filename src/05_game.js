@@ -913,6 +913,16 @@ function drawHUD() {
     const cv = document.createElement('canvas'), n = Math.ceil(ms); cv.width = cv.height = n; const g = cv.getContext('2d');
     g.translate(ms / 2 - (bb.minX + bb.maxX) / 2 * sc, ms / 2 - (bb.minY + bb.maxY) / 2 * sc); g.scale(sc, sc); g.lineJoin = 'round';
     g.strokeStyle = '#fff'; g.lineWidth = T.hw * 1.2; g.stroke(T.path); g.strokeStyle = T.theme.minimap; g.lineWidth = T.hw * 0.7; g.stroke(T.path);
+    // målgången: rutig linje tvärs över banan + flagga bredvid
+    const cl = T.cl, q = 1 / sc, sq = Math.max(T.hw * 0.42, 5.5 * q), L = 2 * sq, nq = 4;
+    g.save(); g.translate(cl.px[0], cl.py[0]); g.rotate(cl.ang[0]);
+    g.fillStyle = '#1a1033'; g.fillRect(-sq - 1.5 * q, -nq / 2 * sq - 1.5 * q, L + 3 * q, nq * sq + 3 * q);
+    for (let r = 0; r < 2; r++) for (let k = 0; k < nq; k++) { g.fillStyle = (r + k) % 2 ? '#111' : '#fff'; g.fillRect(-sq + r * sq, (k - nq / 2) * sq, sq, sq); }
+    g.restore();
+    const side = nq / 2 * sq + 15 * q; g.font = `${Math.round(20 * q)}px Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    // flaggan på den sida där den syns bäst (inte över en annan del av banan, inte utanför kartan)
+    const cand = [1, -1].map(d => { const x = cl.px[0] + cl.nx[0] * side * d, y = cl.py[0] + cl.ny[0] * side * d, m = 12 * q; const inside = x > bb.minX - 20 * q + m && x < bb.maxX + 20 * q - m && y > bb.minY - 20 * q + m && y < bb.maxY + 20 * q - m; return { x, y, sc: distToTrack(cl, x, y) + (inside ? 1e6 : 0) }; }).sort((a, b) => b.sc - a.sc)[0];
+    g.fillText('🏁', cand.x, cand.y);
     T.mini = { cv, ms: n };
   }
   ctx.drawImage(T.mini.cv, mx, my);
