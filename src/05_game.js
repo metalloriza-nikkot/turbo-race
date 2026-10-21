@@ -6,11 +6,11 @@ window.addEventListener('resize', resize); resize();
 
 const keys = {};
 const DIFFS = [
-  { id: 'beginner', name: 'NYBÖRJARE', icon: '🐣', say: 'Nybörjare. Bilen styr själv!', ai: 0.74, items: 0.3, ahead: 250, behindBoost: 1.0, homePlayer: false },
-  { id: 'easy', name: 'LÅNGSAM', icon: '🐢', say: 'Långsam', ai: 0.80, items: 0.35, ahead: 350, behindBoost: 1.04, homePlayer: false },
-  { id: 'lagom', name: 'LAGOM', icon: '🦊', say: 'Lagom. Lite svårare än sköldpaddan, lite lättare än haren.', ai: 0.855, items: 0.42, ahead: 500, behindBoost: 1.07, homePlayer: false },
-  { id: 'mid', name: 'MELLAN', icon: '🐇', say: 'Mellan', ai: 0.91, items: 0.5, ahead: 700, behindBoost: 1.10, homePlayer: false },
-  { id: 'hard', name: 'SNABB', icon: '🚀', say: 'Snabb', ai: 0.985, items: 0.8, ahead: 1500, behindBoost: 1.16, homePlayer: true },
+  { id: 'beginner', name: 'NYBÖRJARE', icon: '🐣', say: 'Nybörjare. Bilen styr själv!', aiSuper: null, ai: 0.74, items: 0.3, ahead: 250, behindBoost: 1.0, homePlayer: false },
+  { id: 'easy', name: 'LÅNGSAM', icon: '🐢', say: 'Långsam', aiSuper: null, ai: 0.80, items: 0.35, ahead: 350, behindBoost: 1.04, homePlayer: false },
+  { id: 'lagom', name: 'LAGOM', icon: '🦊', say: 'Lagom. Lite svårare än sköldpaddan, lite lättare än haren.', aiSuper: { rate: 2.2, dose: 40 }, ai: 0.855, items: 0.42, ahead: 500, behindBoost: 1.07, homePlayer: false },
+  { id: 'mid', name: 'MELLAN', icon: '🐇', say: 'Mellan', aiSuper: { rate: 3.3, dose: 100 }, ai: 0.91, items: 0.5, ahead: 700, behindBoost: 1.10, homePlayer: false },
+  { id: 'hard', name: 'SNABB', icon: '🚀', say: 'Snabb', aiSuper: { rate: 4.5, dose: 100 }, ai: 0.985, items: 0.8, ahead: 1500, behindBoost: 1.16, homePlayer: true },
 ];
 const easyish = () => G.diff.id === 'easy' || G.diff.id === 'beginner';
 const SLIP = { saft: 1, ice: 1, slime: 1, puddle: 1 }, SPINHAZ = { lava: 1, oil: 1 };
@@ -40,7 +40,7 @@ function startRace(def, opts) {
   for (const b of T.boxes) { b.alive = true; b.respawn = 0; }
   for (const p of T.props) { p.x = p.hx; p.y = p.hy; p.a = p.ha; p.idx = p.hi; p.vx = p.vy = p.va = 0; }
   G.skids = []; G.spinLog = {};
-  G.laps = G.school ? 99 : (def.laps || 3); G.cars = []; G.balls = []; G.blobs = []; G.parts = []; G.finishCount = 0; G.time = 0; G.raceT = 0; G.banner = null;
+  G.laps = G.school ? 99 : (def.laps || 3); G.cars = []; G.balls = []; G.blobs = []; G.parts = []; G.finishCount = 0; G.time = 0; G.raceT = 0; G.aiSuperSaid = -99; G.banner = null;
   const me = opts.me || { car: 0, name: '', fig: DEFAULT_FIG };
   let opps = opts.opps;
   if (!opps) { const free = DRIVERS.map((_, i) => i).filter(i => i !== me.car).sort(() => Math.random() - 0.5); const chars = PREMADE.slice().sort(() => Math.random() - 0.5); opps = free.slice(0, 4).map((car, k) => ({ car, name: chars[k].name, fig: chars[k].fig })); }
@@ -131,7 +131,7 @@ function aiControl(c, dt) {
 
 // ---------- Fysik ----------
 function stepCar(c, ctl, dt) {
-  if (c.isPlayer) superHold(c, dt);
+  if (c.isPlayer) superHold(c, dt); else aiSuper(c, dt);
   const T = G.T;
   let thr = ctl.throttle, steer = ctl.steer;
   if (G.mode === 'countdown') { thr = 0; steer = 0; }
@@ -294,6 +294,30 @@ function superHold(c, dt) {
     if (c.meter <= 0) { c.superOn = false; c.superAuto = false; addText(c.x, c.y - 20, 'TOM!', '#b3e5fc'); }
   }
   c.meterReady = c.meter >= SUPER_MIN;
+}
+// MOTSTÅNDARNAS SUPERTURBO: mätaren fylls med tiden (de driftar inte som spelaren). Hur mycket beror på nivån:
+// 🐣🐢 ingen, 🦊 små doser, 🐇🚀 hela mätaren. Används på raksträckor, oftare om bilen ligger efter spelaren.
+const AI_SUPER_LINES = [n => `${n} tänder superturbon!`, n => `Där drar ${n} iväg på superturbo!`, n => `${n} trycker på den stora röda knappen!`, n => `Superturbo för ${n}! Håll i hattarna!`, n => `${n} har sparat turbo – och använder den NU!`, n => `Wiiiish! Det var ${n} på superturbo!`];
+function aiSuper(c, dt) {
+  const cfg = G.diff && G.diff.aiSuper; if (!cfg || G.demo || G.school || !G.T) return;
+  if (G.mode !== 'race' || c.finished) { c.superOn = false; return; }
+  if (c.superOn) {
+    c.meter = Math.max(0, c.meter - SUPER_DRAIN * dt); c.superLeft -= SUPER_DRAIN * dt; giveBoost(c, 0.12, 1.6); c.superT = 0.12;
+    if (c.meter <= 0 || c.superLeft <= 0 || c.spin > 0) c.superOn = false;
+    return;
+  }
+  c.meter = Math.min(100, (c.meter || 0) + cfg.rate * dt * (0.85 + ((c.d.id.length * 7) % 5) * 0.08));
+  c.aiSuperCool = Math.max(0, (c.aiSuperCool || 0) - dt);
+  if (c.meter < cfg.dose || c.aiSuperCool > 0 || c.spin > 0 || c.air > 0 || G.raceT < 6) return;
+  const cl = G.T.cl, N = G.T.N, a0 = cl.ang[c.idx], straight = Math.abs(angDiff(cl.ang[(c.idx + 18) % N], a0)) < 0.12 && Math.abs(angDiff(cl.ang[(c.idx + 40) % N], a0)) < 0.2;
+  if (!straight) return;
+  const P = G.player, behind = P && P.prog > c.prog;
+  if (!behind && Math.random() > 0.35) { c.aiSuperCool = 1.5; return; } // ligger före: väntar oftare
+  c.superOn = true; c.superLeft = cfg.dose; c.aiSuperCool = 4; logEv('superturbo', 'motståndare', c.who && c.who.name);
+  const near = P && Math.hypot(P.x - c.x, P.y - c.y) < 1100;
+  addText(c.x, c.y - 30, 'SUPERTURBO!', '#40c4ff'); if (near) Snd.play('boost');
+  for (let k = 0; k < 14; k++) { const a = Math.random() * TAU; G.parts.push({ x: c.x, y: c.y, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240, life: 0.4, max: 0.4, size: 6, color: k % 2 ? '#40c4ff' : '#ffffff', type: 'dot' }); }
+  if (typeof CUP !== 'undefined' && CUP.active && SETTINGS.show && !G.radio && c.who && G.raceT - (G.aiSuperSaid || -99) > 14) G.aiSuperSaid = G.raceT, G.radio = { lines: [['goran', pickFrom('aisuper', AI_SUPER_LINES)(c.who.name)]], t: 3.5, icon: '🎙️' };
 }
 // används av testerna: kör en hel dos automatiskt
 function useSuper(c) {
@@ -870,6 +894,10 @@ function drawHUD() {
     ctx.fillStyle = c.isPlayer ? 'rgba(255,214,0,0.85)' : 'rgba(20,10,50,0.55)'; rr(ctx, x - 20 * u, y - 30 * u, 190 * u, 60 * u, 16 * u); ctx.fill();
     txt(String(k + 1), x + 8 * u, y + 2 * u, 34, c.isPlayer ? '#1a1033' : '#fff', 'center', c.isPlayer ? 0 : 5);
     if (c.who) drawFace(ctx, c.who.fig, x + 58 * u, y, 25 * u, G.time);
+    if (c.superOn && !c.isPlayer) { // motståndare på superturbo: blå glöd + lågor i listan
+      ctx.save(); ctx.strokeStyle = '#40c4ff'; ctx.lineWidth = (3 + Math.sin(G.time * 20) * 1.5) * u; ctx.shadowColor = '#40c4ff'; ctx.shadowBlur = 14 * u; rr(ctx, x - 20 * u, y - 30 * u, 190 * u, 60 * u, 16 * u); ctx.stroke(); ctx.restore();
+      for (let f = 0; f < 3; f++) { const fl = (14 + Math.random() * 12) * u; ctx.fillStyle = ['#2979ff', '#40c4ff', '#e1f5fe'][f]; ctx.beginPath(); ctx.moveTo(x + 92 * u, y - (6 - f * 2) * u); ctx.lineTo(x + 92 * u - fl * (1 - f * 0.25), y); ctx.lineTo(x + 92 * u, y + (6 - f * 2) * u); ctx.fill(); }
+    }
     ctx.save(); ctx.translate(x + 122 * u, y); ctx.scale(0.72 * u, 0.72 * u); drawCar(ctx, c.d, G.time); ctx.restore();
   }
   // minikarta

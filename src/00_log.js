@@ -1,7 +1,7 @@
 // ===================== FELSÖKNINGSLOGG =====================
 // Ringbuffert med händelser + fel. Sparas löpande i localStorage, så loggen från förra sessionen finns kvar
 // även om webbläsaren fick stängas. Exporteras med Ctrl+Skift+L eller från föräldravyn.
-const TR_VERSION = 'v16.6';
+const TR_VERSION = 'v16.7';
 const TRLOG = { buf: [], keys: [], max: 500, start: new Date().toISOString(), prev: null, dirty: false, errs: 0 };
 try { const old = JSON.parse(localStorage.getItem('turbo_log') || 'null'); if (old && old.buf && old.buf.length) TRLOG.prev = old; } catch (e) { }
 function logClock(ms) { const d = new Date(), p = (n, l = 2) => String(n).padStart(l, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}` + (ms ? '.' + p(d.getMilliseconds(), 3) : ''); }

@@ -72,6 +72,12 @@ Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 �
 - Testat hela vägen: skapa spelare → turnering → lopp 1 → Esc mitt i lopp 2 → spara → töm webbläsaren → ladda filen → fortsätt → lopp 2 räknas vidare på rätt poäng.
 - Detta är förberedelsen för att flytta spelet till GitHub Pages (profilen flyttas med en sparfil).
 
+## v16.7 – Motståndarnas superturbo (2026-10-21)
+- Motståndarnas mätare fylls med tiden. 🐣🐢: ingen superturbo. 🦊: små doser (40 %). 🐇🚀: hela mätaren, 🚀 laddar snabbast.
+- De tänder den bara på raksträckor, och oftare när de ligger efter spelaren.
+- Syns och hörs: blå lågor + "SUPERTURBO!" över bilen, ljud om bilen är nära, blå glöd och lågor på raden i ställningslistan. I turneringen säger kommentatorn något (högst var 14:e sekund).
+- Test: `tests/test_aisuper.py` (0 gånger på 🐢; 🦊 kortare doser än 🐇).
+
 ## Repo och webbapp (2026-10-20)
 - Koden ligger i GitHub: https://github.com/metalloriza-nikkot/turbo-race (src/, tests/, pwa/, build.py, CLAUDE.md).
 - Webbappen publiceras automatiskt till https://metalloriza-nikkot.github.io/turbo-race/ vid varje push till main (Actions-flödet `Bygg och publicera spelet`). Kräver att Pages-källan är satt till *GitHub Actions* i repots inställningar.
