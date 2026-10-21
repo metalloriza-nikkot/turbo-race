@@ -14,9 +14,8 @@ function cupSaveClear() { if (PROF.cupSave && PROF.cupSave[pkey()]) { delete PRO
 function cupSaved() { const s = PROF.cupSave && PROF.cupSave[pkey()]; return s && s.tracks && s.idx < s.tracks.length + 1 ? s : null; }
 function cupResume() {
   const s = cupSaved(); if (!s) return startCup();
-  const byId = id => id === FINAL_DEF.id ? FINAL_DEF : TRACK_DEFS.find(t => t.id === id);
   CUP.active = true; CUP.idx = s.idx; CUP.diff = s.diff; CUP.me = s.me; CUP.opps = s.opps; CUP.pts = s.pts; CUP.last = s.last;
-  CUP.tracks = s.tracks.map(byId).filter(Boolean); SHOW.nick = {};
+  CUP.tracks = s.tracks.map(trackById).filter(Boolean); SHOW.nick = {};
   CUP.racers = [{ key: 'me', name: CUP.me.name, fig: CUP.me.fig, d: styledCar(CUP.me.car, CUP.me.paint, CUP.me.sticker) }, ...CUP.opps.map(o => ({ key: o.name, name: o.name, fig: o.fig, d: DRIVERS[o.car] || DRIVERS[0] }))];
   SEL.mode = 'cup'; SEL.diff = CUP.diff; logEv('turnering', 'fortsätter', { bana: CUP.idx + 1 });
   if (CUP.idx >= CUP.tracks.length) return showCupFinal();

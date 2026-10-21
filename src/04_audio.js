@@ -106,6 +106,7 @@ const Snd = (() => {
   fx.buzz = () => { tone({ f: 150, t: 0.3, v: 0.25, type: 'square' }); };
   fx.star = () => { [784, 988, 1175, 1568].forEach((f, k) => tone({ f, t: 0.15, v: 0.2, delay: k * 0.07 })); };
   fx.buy = () => { [1046, 1318, 1568, 2093].forEach((f, k) => tone({ f, t: 0.1, v: 0.18, delay: k * 0.05, type: 'triangle' })); };
+  fx.fanfar = () => fx.fanfare(); // gammalt namn som används på några ställen
   function play(name, ...a) { if (!ac || !SETTINGS.sfx) return; try { fx[name](...a); } catch (e) { } }
   // Motorljud
   function engine(on, speed01) {

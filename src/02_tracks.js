@@ -83,7 +83,7 @@ const FINAL_DEF = {
   special: ['stage']
 };
 function buildTrack(def) {
-  const SC = def.id === 'rum' ? 1.9 : 1.55;
+  const SC = def.sc || (def.id === 'rum' ? 1.9 : 1.55);
   const cl = buildCenterline(def.pts.map(([x, y]) => [x * SC, y * SC]), 10);
   const T = { def, cl, N: cl.N, hw: def.hw, theme: def.theme };
   // Hinder i tre klasser: PRYLAR (flyttbara, bromsar lite), UNDERLAG (halt/segt), SNURR-FAROR (tydligt markerade, få).
@@ -91,12 +91,12 @@ function buildTrack(def) {
   const idxOf = t => Math.round(((t % 1) + 1) % 1 * cl.N);
   const busy = [...def.hazards.filter(h => SPINHAZ[h[0]]), ...def.obstacles.filter(o => !PROP_KINDS[o[0]]), ...def.movers, ...def.ramps.map(r => [r[1], r[0]])].map(e => idxOf(e[1]));
   const free = t => busy.every(b => { const d = Math.abs(idxOf(t) - b); return Math.min(d, cl.N - d) > 35; });
-  const dup = (list, shift) => list.concat(list.map(e => { const c = e.slice(); c[1] = (c[1] + shift) % 1; c[2] = -c[2]; return c; }).filter(c => c[1] > 0.04 && c[1] < 0.95 && free(c[1])));
+  const dup = (list, shift) => def.exact ? list : list.concat(list.map(e => { const c = e.slice(); c[1] = (c[1] + shift) % 1; c[2] = -c[2]; return c; }).filter(c => c[1] > 0.04 && c[1] < 0.95 && free(c[1])));
   const hazards = [...def.hazards.filter(h => SPINHAZ[h[0]]), ...dup(def.hazards.filter(h => !SPINHAZ[h[0]]), 0.37)];
   const obstacles = def.obstacles.filter(o => !PROP_KINDS[o[0]]);
   const props = dup(def.obstacles.filter(o => PROP_KINDS[o[0]]), 0.37);
   const movers = def.movers;
-  const itemsT = def.items.concat(def.items.map((t, k) => (t + def.items[(k + 1) % def.items.length] + (k === def.items.length - 1 ? 1 : 0)) / 2 % 1));
+  const itemsT = def.exact ? def.items : def.items.concat(def.items.map((t, k) => (t + def.items[(k + 1) % def.items.length] + (k === def.items.length - 1 ? 1 : 0)) / 2 % 1));
   const at = (t, off) => { const i = ((Math.round(t * cl.N) % cl.N) + cl.N) % cl.N; return { i, x: cl.px[i] + cl.nx[i] * off, y: cl.py[i] + cl.ny[i] * off, a: cl.ang[i] }; };
   T.at = at;
   // bounding box
@@ -141,6 +141,7 @@ function buildDecor(T) {
     return true;
   };
   for (const sp of def.special) {
+    if (sp !== 'sofa' && sp !== 'ocean' && !(T.infield.r > 320)) continue; // egna banor kan ha liten innerplan
     if (sp === 'rug') special.push({ kind: 'rug', x: T.infield.x, y: T.infield.y, r: Math.min(T.infield.r, 800), blocks: true, br: Math.min(T.infield.r, 800) });
     if (sp === 'lake') special.push({ kind: 'lake', x: T.infield.x, y: T.infield.y, r: Math.min(T.infield.r, 750), blocks: true, br: Math.min(T.infield.r, 750) });
     if (sp === 'volcano') special.push({ kind: 'volcano', x: T.infield.x, y: T.infield.y, r: Math.min(T.infield.r, 850), blocks: true, br: Math.min(T.infield.r, 850) });

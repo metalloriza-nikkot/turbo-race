@@ -22,7 +22,7 @@ const PLACE_SAY = ['första', 'andra', 'tredje', 'fjärde', 'femte'];
 
 const G = window.__TR = { mode: 'none', T: null, cars: [], player: null, balls: [], blobs: [], parts: [], time: 0, cam: { x: 0, y: 0, shake: 0, vh: 1000, a: 0, rot: 0 }, banner: null, laps: 3, diff: DIFFS[0], paused: false, finishCount: 0, countdown: 0, raceT: 0, lastCount: 4, hoppT: 0, playerName: '' };
 const BUILT = {};
-function getTrack(def) { if (!BUILT[def.id]) BUILT[def.id] = buildTrack(def); return BUILT[def.id]; }
+function getTrack(def) { const k = def.id + (def.rev ? ':' + def.rev : ''); if (!BUILT[k]) BUILT[k] = buildTrack(def); return BUILT[k]; }
 
 function makeCar(d, T, k, isPlayer) {
   const N = T.N; const idx = (N - 14 - k * 9) % N; const lat = (k % 2 ? 1 : -1) * T.hw * 0.42;
@@ -510,6 +510,7 @@ function updateParts(dt) {
 function placeOf(c) { return G.order ? G.order.indexOf(c) : 0; }
 function update(dt) {
   if (G.mode === 'city') { cityUpdate(dt); return; }
+  if (G.mode === 'build') { builderUpdate(dt); return; }
   const T = G.T; if (!T) return;
   G.time += dt;
   if (G.mode === 'show') { showUpdate(dt); return; }
@@ -618,6 +619,7 @@ function render() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (G.mode === 'show') { drawShow(); return; }
   if (G.mode === 'city' && G.city) { drawCity(); return; }
+  if (G.mode === 'build' && BUILDER) { drawBuilder(); return; }
   const T = G.T; if (!T) { ctx.fillStyle = '#1a237e'; ctx.fillRect(0, 0, W, H); return; }
   const cam = G.cam, zoom = H / cam.vh;
   const sx = (Math.random() - 0.5) * cam.shake * DPR, sy = (Math.random() - 0.5) * cam.shake * DPR;

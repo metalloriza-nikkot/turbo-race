@@ -39,9 +39,10 @@ function showScreen(id, push = true) {
 function hideUI() { document.querySelectorAll('.screen').forEach(s => s.classList.remove('on')); $('#ui').classList.remove('on'); curScreen = null; moreHint(); }
 function back() {
   if (curScreen === 'pause') { resume(); return; }
+  if (curScreen === 'bname' && BUILDER) { Snd.play('back'); bNameBack(); return; }
   if (!screenStack.length) return; Snd.play('back'); const p = screenStack.pop(); refreshScreen(p); showScreen(p, false);
 }
-function refreshScreen(id) { if (id === 'hub') buildHub(); if (id === 'title') buildTitle(); if (id === 'school') buildSchool(); if (id === 'city') buildCityMenu(); if (id === 'garage') buildGarage(); if (id === 'opps') buildOpps(); if (id === 'shop') buildShop(); }
+function refreshScreen(id) { if (id === 'hub') buildHub(); if (id === 'title') buildTitle(); if (id === 'school') buildSchool(); if (id === 'city') buildCityMenu(); if (id === 'garage') buildGarage(); if (id === 'opps') buildOpps(); if (id === 'shop') buildShop(); if (id === 'build') buildBuilderMenu(); }
 // Rulla fram knappen om den ligger utanför den skrollbara skärmen (piltangenter/handkontroll)
 function scrollToEl(el) { const scr = el.closest && el.closest('.screen'); if (!scr || scr.scrollHeight <= scr.clientHeight + 2) return; const r = el.getBoundingClientRect(), sr = scr.getBoundingClientRect(), pad = 70; if (r.top < sr.top + pad || r.bottom > sr.bottom - pad) scr.scrollBy({ top: r.top < sr.top + pad ? r.top - sr.top - pad - 20 : r.bottom - sr.bottom + pad + 20, behavior: 'smooth' }); }
 // Skärmen får plats: krymper innehållet (zoom, ner till 68 %) om det inte ryms. Räcker inte det kan man skrolla,
@@ -120,11 +121,12 @@ function buildHub() {
   const info = document.createElement('div'); info.className = 'hubinfo'; info.innerHTML = `<div class="hubname">${esc(G.playerName || 'SPELARE')}</div><div class="coins">🪙 ${pd.coins}</div>`; hd.appendChild(info);
   const g = $('#hub-grid'); g.innerHTML = '';
   const add = (ico, lbl, say, fn, cls = '') => { const b = mkBtn('card hub ' + cls, `<div class="bigico">${ico}</div><div class="lbl">${lbl}</div>`, say, fn); g.appendChild(b); return b; };
-  add('🏁', 'RACE', 'Race', () => { SEL.mode = 'race'; goDrivers(); }, 'go').dataset.default = '1';
+  add('🏁', 'RACE', 'Race', () => { SEL.mode = 'race'; SEL.fixedTrack = null; goDrivers(); }, 'go').dataset.default = '1';
   add('🏆', 'TURNERING', 'Turnering! Kör alla banor och vinn pokalen!', () => cupEntry(), 'gold');
   if (cupSaved()) g.lastChild.insertAdjacentHTML('beforeend', '<div class="badge">PÅGÅR</div>');
   add('🏙️', 'STADEN', 'Turbostaden! Kör runt i staden och gör uppdrag.', () => { buildCityMenu(); showScreen('city'); }, 'gold');
   add('🚦', 'SKOLAN', 'Körskolan', () => { buildSchool(); showScreen('school'); });
+  add('🛠️', 'BYGG BANA', 'Bygg en egen bana!', () => openBuilderMenu());
   add('🚗', 'GARAGET', 'Mitt garage. Figur, butik och motståndare.', () => { buildGarage(); showScreen('garage'); });
   add('💾', 'SPARA SPEL', 'Spara spel', () => saveGame(), 'mini');
   add('📂', 'LADDA SPEL', 'Ladda spel', () => loadGamePick(), 'mini');
@@ -241,7 +243,7 @@ const previewCanvases = [];
 function buildDrivers() {
   const g = $('#driver-grid'); g.innerHTML = '';
   DRIVERS.forEach((d, i) => {
-    const b = mkBtn('card', `<canvas width="240" height="200"></canvas><div class="lbl">${d.name}</div>${d.by ? `<div class="by">DESIGN: ${d.by}</div>` : ''}`, d.say + (d.by ? ` Designad av ${d.by.toLowerCase()}.` : ''), () => { SEL.driver = i; if (SEL.mode === 'cup') { SEL.track = -1; showScreen('diff'); } else goTracks(); });
+    const b = mkBtn('card', `<canvas width="240" height="200"></canvas><div class="lbl">${d.name}</div>${d.by ? `<div class="by">DESIGN: ${d.by}</div>` : ''}`, d.say + (d.by ? ` Designad av ${d.by.toLowerCase()}.` : ''), () => { SEL.driver = i; if (SEL.mode === 'cup') { SEL.track = -1; showScreen('diff'); } else if (SEL.fixedTrack) { const k = allTracks().findIndex(t => t.id === SEL.fixedTrack); SEL.fixedTrack = null; if (k >= 0) { SEL.track = k; showScreen('diff'); } else goTracks(); } else goTracks(); });
     b.style.setProperty('--c', d.type === 'police' ? '#1f5fd6' : d.color === '#23262f' ? '#35d0ff' : d.color); if (d.type === 'jeep') b.querySelector('.lbl').style.fontSize = '24px';
     g.appendChild(b); previewCanvases.push({ el: b.querySelector('canvas'), kind: 'car', i, btn: b });
   });
@@ -251,14 +253,16 @@ function goDrivers() { [...document.querySelectorAll('#driver-grid .card')].forE
 // ---------- Banor ----------
 function buildTracks() {
   const g = $('#track-grid'); g.innerHTML = '';
-  TRACK_DEFS.forEach((t, i) => {
-    const b = mkBtn('card wide', `<canvas width="320" height="220"></canvas><div class="lbl"><span class="ico">${t.icon}</span> ${t.name}</div><div class="medal"></div>`, t.say, () => { SEL.track = i; showScreen('diff'); });
+  for (let k = previewCanvases.length - 1; k >= 0; k--) if (previewCanvases[k].kind === 'track') previewCanvases.splice(k, 1);
+  allTracks().forEach((t, i) => {
+    const b = mkBtn('card wide' + (t.own ? ' own' : ''), `<canvas width="320" height="220"></canvas><div class="lbl"><span class="ico">${t.icon}</span> ${esc(t.name)}</div><div class="medal"></div>${t.own ? '<div class="badge">MIN BANA</div>' : ''}`, t.say + (t.own ? '. Din egen bana!' : ''), () => { SEL.track = i; showScreen('diff'); });
     b.dataset.idx = i; g.appendChild(b); previewCanvases.push({ el: b.querySelector('canvas'), kind: 'track', def: t, btn: b, drawn: false });
   });
 }
 function goTracks() {
-  const med = (PROF.medals[pkey()] || {});
-  [...document.querySelectorAll('#track-grid .card')].forEach(b => { const i = +b.dataset.idx; const p = med[TRACK_DEFS[i].id]; b.querySelector('.medal').textContent = p ? ['🥇', '🥈', '🥉', '⭐', '⭐'][p - 1] : ''; if (i === SEL.track) b.dataset.default = '1'; else delete b.dataset.default; });
+  buildTracks(); const med = (PROF.medals[pkey()] || {}), all = allTracks();
+  if (SEL.track >= all.length) SEL.track = 0;
+  [...document.querySelectorAll('#track-grid .card')].forEach(b => { const i = +b.dataset.idx; const p = all[i] && med[all[i].id]; b.querySelector('.medal').textContent = p ? ['🥇', '🥈', '🥉', '⭐', '⭐'][p - 1] : ''; if (i === SEL.track) b.dataset.default = '1'; else delete b.dataset.default; });
   showScreen('track');
 }
 function drawTrackPreview(cv, def) {
@@ -269,9 +273,10 @@ function drawTrackPreview(cv, def) {
   c.save(); c.translate(w / 2 - (bb.minX + bb.maxX) / 2 * sc, h / 2 - (bb.minY + bb.maxY) / 2 * sc); c.scale(sc, sc);
   if (def.special.includes('ocean')) { c.fillStyle = '#29b6f6'; c.fillRect(bb.minX - 2000, bb.maxY + T.hw + 150, 8000, 2000); }
   for (const s of T.special) { if (s.kind === 'lake') { c.fillStyle = '#8ec5ea'; c.beginPath(); c.ellipse(s.x, s.y, s.r, s.r * 0.75, 0.2, 0, TAU); c.fill(); } if (s.kind === 'volcano') { c.fillStyle = '#5d4037'; c.beginPath(); c.arc(s.x, s.y, s.r * 0.8, 0, TAU); c.fill(); c.fillStyle = '#ff9800'; c.beginPath(); c.arc(s.x, s.y, s.r * 0.3, 0, TAU); c.fill(); } if (s.kind === 'base') { c.fillStyle = '#4fc3f7'; c.beginPath(); c.arc(s.x, s.y, s.r * 0.5, 0, TAU); c.fill(); } if (s.kind === 'park') { c.fillStyle = '#7cb342'; c.beginPath(); c.arc(s.x, s.y, s.r, 0, TAU); c.fill(); } if (s.kind === 'rug') { c.fillStyle = '#3f51b5'; c.beginPath(); c.ellipse(s.x, s.y, s.r, s.r * 0.8, 0, 0, TAU); c.fill(); } }
-  if (def.id === 'sno') for (const o of T.decor) if (o.kind === 'pine') { c.fillStyle = '#2e7d32'; c.beginPath(); c.arc(o.x, o.y, o.r, 0, TAU); c.fill(); }
-  if (def.id === 'stad') for (const o of T.decor) if (o.kind === 'house') { c.fillStyle = '#b0493b'; c.fillRect(o.x - o.r * 0.7, o.y - o.r * 0.5, o.r * 1.4, o.r); }
-  if (def.id === 'strand') for (const o of T.decor) if (o.kind === 'palm') { c.fillStyle = '#43a047'; c.beginPath(); c.arc(o.x, o.y, o.r, 0, TAU); c.fill(); }
+  const bid = def.base || def.id;
+  if (bid === 'sno') for (const o of T.decor) if (o.kind === 'pine') { c.fillStyle = '#2e7d32'; c.beginPath(); c.arc(o.x, o.y, o.r, 0, TAU); c.fill(); }
+  if (bid === 'stad') for (const o of T.decor) if (o.kind === 'house') { c.fillStyle = '#b0493b'; c.fillRect(o.x - o.r * 0.7, o.y - o.r * 0.5, o.r * 1.4, o.r); }
+  if (bid === 'strand') for (const o of T.decor) if (o.kind === 'palm') { c.fillStyle = '#43a047'; c.beginPath(); c.arc(o.x, o.y, o.r, 0, TAU); c.fill(); }
   c.lineJoin = 'round'; c.strokeStyle = def.theme.b1; c.lineWidth = T.hw * 2 + 90; c.stroke(T.path); c.strokeStyle = def.theme.road; c.lineWidth = T.hw * 2; c.stroke(T.path);
   c.restore();
 }
@@ -284,8 +289,9 @@ function buildDiff() {
 function beginRace() {
   if (SEL.mode === 'cup') { if (!CUP.active) return startCup(); return runCupRace(); }
   CUP.active = false; hideUI(); Voice.stop();
-  startRace(TRACK_DEFS[SEL.track], { me: playerRacer(), opps: pickOpps(SEL.driver), diff: DIFFS[SEL.diff] });
-  setTimeout(() => Voice.say(TRACK_DEFS[SEL.track].say + '! Gör dig redo!', true), 150);
+  const def = allTracks()[SEL.track] || TRACK_DEFS[0];
+  startRace(def, { me: playerRacer(), opps: pickOpps(SEL.driver), diff: DIFFS[SEL.diff] });
+  setTimeout(() => Voice.say(def.say + '! Gör dig redo!', true), 150);
 }
 
 // ---------- Turnering ----------
@@ -295,7 +301,7 @@ function startCup() {
   CUP.active = true; CUP.idx = 0; CUP.diff = SEL.diff; CUP.me = playerRacer(); CUP.opps = pickOpps(SEL.driver);
   CUP.racers = [{ key: 'me', name: CUP.me.name, fig: CUP.me.fig, d: styledCar(CUP.me.car, CUP.me.paint, CUP.me.sticker) }, ...CUP.opps.map(o => ({ key: o.name, name: o.name, fig: o.fig, d: DRIVERS[o.car] }))];
   CUP.pts = {}; CUP.last = {}; for (const r of CUP.racers) { CUP.pts[r.key] = 0; CUP.last[r.key] = 0; }
-  CUP.tracks = [...TRACK_DEFS, FINAL_DEF]; SHOW.nick = {};
+  CUP.tracks = [...TRACK_DEFS, ...myTrackDefs().slice(-2), FINAL_DEF]; SHOW.nick = {}; // egna banor: de två senaste är med
   runCupRace();
 }
 function cupIsFinal() { return CUP.tracks && CUP.tracks[CUP.idx] === FINAL_DEF; }
@@ -522,13 +528,14 @@ window.addEventListener('keydown', e => {
   if (!G.musicStarted && Snd.ready) { G.musicStarted = true; if (G.demo) Snd.music('menu'); }
   const ae = document.activeElement, inInput = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
   if (inInput) {
-    if (e.code === 'Enter') { e.preventDefault(); if (ae.id === 'name-in') saveName(); else if (ae.id === 'pin-in') checkPin(); else if (ae.closest && ae.closest('#par-body')) ae.blur(); else { ae.blur(); focusEl($('#fig-rows .nav')); } }
+    if (e.code === 'Enter') { e.preventDefault(); if (ae.id === 'name-in') saveName(); else if (ae.id === 'bname-in') bSave(); else if (ae.id === 'pin-in') checkPin(); else if (ae.closest && ae.closest('#par-body')) ae.blur(); else { ae.blur(); focusEl($('#fig-rows .nav')); } }
     else if (e.code === 'Escape') { ae.blur(); back(); }
     else if (ae.id === 'opp-name' && (e.code === 'ArrowDown')) { ae.blur(); focusEl($('#fig-rows .nav')); }
     return;
   }
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   keys[e.code] = true;
+  if (G.mode === 'build' && !curScreen) { buildKey(e); return; }
   if (G.mode === 'city' && G.city && !curScreen) { if (e.code === 'Space' || e.code === 'Enter') e.preventDefault(); cityKey(e); return; }
   if (e.code === 'KeyF' && !e.repeat) toggleFull();
   if (curScreen === 'quiz' && quizKey(e)) { e.preventDefault(); return; }
@@ -567,7 +574,7 @@ function loop(now) {
   try {
     if (G.mode !== lastMode) { logEv('läge', (lastMode || '–') + ' → ' + G.mode); lastMode = G.mode; }
     const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; const t = now / 1000;
-    if ((G.T || G.mode === 'city') && !G.paused && G.mode !== 'done') { trackTime(dt); const n = 3; for (let k = 0; k < n; k++) update(dt / n); }
+    if ((G.T || G.mode === 'city' || G.mode === 'build') && !G.paused && G.mode !== 'done') { trackTime(dt); const n = 3; for (let k = 0; k < n; k++) update(dt / n); }
     render();
     if (curScreen === 'driver') for (const p of previewCanvases) if (p.kind === 'car') { const c = p.el.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, p.el.width, p.el.height); const f = document.activeElement === p.btn; const pd = playerData(); const d = styledCar(p.i, pd.equip.paint, pd.equip.sticker); c.save(); c.translate(128, 150); c.scale(1.75, 1.75); drawCarFront(c, d, t + p.i * 0.37, { speed: f ? 1.2 : 0, still: !f, boost: f }); c.restore(); /* liten bild ovanifrån i hörnet: så ser bilen ut på banan */ c.save(); c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.arc(34, 34, 28, 0, TAU); c.fill(); c.translate(34, 34); c.rotate(-Math.PI / 2); c.scale(0.62, 0.62); drawCar(c, d, t); c.restore(); }
     if (curScreen === 'track') for (const p of previewCanvases) if (p.kind === 'track' && !p.drawn) { drawTrackPreview(p.el, p.def); p.drawn = true; }
@@ -590,7 +597,7 @@ function drawTitleCars(t) {
 
 // ---------- Start ----------
 function init() {
-  initSaveLoad();
+  initSaveLoad(); initBuilder();
   document.querySelectorAll('.screen').forEach(sc => sc.addEventListener('scroll', moreHint, { passive: true })); window.addEventListener('resize', fitSoon);
   try { new MutationObserver(fitSoon).observe($('#ui'), { childList: true, subtree: true, characterData: true }); } catch (e) { }
   $('#more-hint').addEventListener('click', () => { const sc = curScreen && $('#scr-' + curScreen); if (sc) sc.scrollBy({ top: sc.clientHeight * 0.7, behavior: 'smooth' }); });
@@ -625,4 +632,4 @@ function init() {
   requestAnimationFrame(loop);
 }
 init();
-window.__TRx = { SETTINGS, saveGame, loadGameFile, cupSaved, drawCarFront, drawCarShowroom, drawCar, carTrail, SOUNDDBG: () => ({ show: SOUND.show, word: SOUND.word }), ui: { showScreen, hideUI, buildOpps, buildShop, buildGarage, buildHub, openFigEditor, buildDrivers, goDrivers, goTracks, buildSchool, buildCityMenu, showLicense, openParent, showSchoolResult, showResults, showCupFinal, pause, SEL, PROF: () => PROF, mathQuiz, raceMathBonus }, startCity, cityKey, cityPath, buildPreRace, buildPress, resultComment, drawFigureTalk, drawRig, POSES, showStart, PROFS, ADS, STEWARDS, GP, CUTS, interviewLines, STUDIO, ANTHEM_REACT, CAST, DRIVERS, TRACK_DEFS, FINAL_DEF, startRace, pickOpps, DEFAULT_FIG, DIFFS, render, SHOW };
+window.__TRx = { cup: () => CUP, getTrack, builder: { start: o => startBuilder(o), step: (x, y) => bStep(x, y), key: c => buildKey({ code: c, repeat: false, preventDefault() { }, shiftKey: false }), state: () => BUILDER, customDef, myTracks, allTracks, openMenu: () => openBuilderMenu(), openBt: i => openBt(i), themes: () => { buildThemeScreen(); showScreen('btheme'); }, save: () => bSave() }, SETTINGS, saveGame, loadGameFile, cupSaved, drawCarFront, drawCarShowroom, drawCar, carTrail, SOUNDDBG: () => ({ show: SOUND.show, word: SOUND.word }), ui: { showScreen, hideUI, buildOpps, buildShop, buildGarage, buildHub, openFigEditor, buildDrivers, goDrivers, goTracks, buildSchool, buildCityMenu, showLicense, openParent, showSchoolResult, showResults, showCupFinal, pause, SEL, PROF: () => PROF, mathQuiz, raceMathBonus }, startCity, cityKey, cityPath, buildPreRace, buildPress, resultComment, drawFigureTalk, drawRig, POSES, showStart, PROFS, ADS, STEWARDS, GP, CUTS, interviewLines, STUDIO, ANTHEM_REACT, CAST, DRIVERS, TRACK_DEFS, FINAL_DEF, startRace, pickOpps, DEFAULT_FIG, DIFFS, render, SHOW };

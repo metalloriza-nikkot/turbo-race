@@ -16,7 +16,7 @@ const GP = {
   stad: { title: 'STADS-GP', tag: 'Varning för ankor, lapplisor och vuxna som pratar mitt i vägen.', tags: ['Rusningstrafik, rondeller och en förvirrad duva.', 'Kör försiktigt – här bor Britt-Maries moster.', 'Grönt betyder kör. Rött betyder korv. Nej förlåt, stopp.'], anthem: 'en bilalarm-kvartett', anthems: ['en sopbil som backar: pip, pip, pip', 'tutande taxibilar i kanon', 'en duva som kuttrar allvarligt'], flag: '🅿️', flagName: 'en parkeringsbot' },
   final: { title: 'DEN STORA FINALEN', tag: 'IFSB:s Heliga Arena. Dubbla poäng. Ingen vet varför.', tags: ['Allt eller inget. Mest allt.', 'Här avgörs allt. Och lite till.', 'Den största finalen sedan förra finalen.'], anthem: 'hela orkestern (en man med kazoo)', anthems: ['fyrverkerier och en ensam triangel', 'hela publiken som säger BRUM samtidigt', 'en kör av ankor och en mycket stolt tuba'], flag: '🏆', flagName: 'en guldstrumpa' },
 };
-function gpVariant(id) { const b = GP[id] || GP.final; return Object.assign({}, b, { tag: pickFrom('tag_' + id, [b.tag, ...(b.tags || [])]), anthem: pickFrom('anth_' + id, [b.anthem, ...(b.anthems || [])]) }); }
+function gpVariant(id, def) { const b = (def && def.gp) || GP[id] || GP.final; return Object.assign({}, b, { tag: pickFrom('tag_' + id, [b.tag, ...(b.tags || [])]), anthem: pickFrom('anth_' + id, [b.anthem, ...(b.anthems || [])]) }); }
 const STUDIO = [
   [['goran', 'God kväll och välkomna till ett historiskt lopp.'], ['britt', 'Du säger det varje gång.'], ['goran', 'Och varje gång är det sant.']],
   [['goran', 'Förhållandena är perfekta.'], ['britt', 'Det är inomhus, Göran.'], ['goran', 'Perfekta inomhusförhållanden!']],
@@ -268,7 +268,7 @@ function nickFor(r) {
   return (SHOW.nick[key] = nick);
 }
 function buildPreRace(def, k, total, racers) {
-  const gp = gpVariant(def.id), isFinal = def.id === 'final';
+  const gp = gpVariant(def.id, def), isFinal = def.id === 'final';
   const opps = racers.filter(r => r.key !== 'me'), H = heroName().toUpperCase(), opp = opps.length ? opps[Math.floor(Math.random() * opps.length)].name : 'Kapten Krut';
   const c = { h: heroName(), H, gp, opp };
   const sc = [];

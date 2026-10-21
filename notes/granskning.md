@@ -72,6 +72,16 @@ Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 �
 - Testat hela vägen: skapa spelare → turnering → lopp 1 → Esc mitt i lopp 2 → spara → töm webbläsaren → ladda filen → fortsätt → lopp 2 räknas vidare på rätt poäng.
 - Detta är förberedelsen för att flytta spelet till GitHub Pages (profilen flyttas med en sparfil).
 
+## v16.8 – Banbyggaren (2026-10-21)
+- Ny knapp i menyn: 🛠️ BYGG BANA → MINA BANOR (upp till 8 per spelare) → välj miljö → kör fram vägen.
+- Vägen körs fram ruta för ruta på ett rutnät (12×8) med piltangenterna, eller genom att dra med fingret. Backa = sudda. Tillbaka till flaggan = slingan är klar. ENTER innan dess = bilen hittar själv hem (kortaste vägen genom tomma rutor). Minst 8 rutor.
+- Sedan stämplar man ut saker: HOPP, TURBO, LÅDA, hinder, halka och bus (heter olika i varje miljö, t.ex. KON/PÖL/ANKA i staden). MELLANSLAG byter, ENTER sätter ut, siffrorna 1–9 väljer direkt. Hinder får inte stå vid starten.
+- Namnet skrivs med tangentbordet (rösten säger varje bokstav), eller 🎲 TIPS.
+- Banan sparas i profilen (`PROF.mytracks`) och följer därför med i sparfilen. Den finns i banvalet (märkt MIN BANA) och de två senaste egna banorna körs i turneringen före finalen. TV-showen kallar den GRAND PRIX: NAMN.
+- Startlinjen läggs mitt på den längsta raksträckan. Antal varv räknas fram så att loppet blir ungefär lika långt som på de vanliga banorna (2–5 varv).
+- Kod: `src/02b_custom.js` (data → bandefinition), `src/07b_builder.js` (byggläget). Test: `tests/test_builder.py`.
+- Liten rättning: ljudet `fanfar` fanns inte som effekt (bara som tuta) – nu spelas fanfaren.
+
 ## v16.7 – Motståndarnas superturbo (2026-10-21)
 - Motståndarnas mätare fylls med tiden. 🐣🐢: ingen superturbo. 🦊: små doser (40 %). 🐇🚀: hela mätaren, 🚀 laddar snabbast.
 - De tänder den bara på raksträckor, och oftare när de ligger efter spelaren.
