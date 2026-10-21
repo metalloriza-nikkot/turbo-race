@@ -1,7 +1,7 @@
 // ===================== SPELMOTOR =====================
 const canvas = document.getElementById('game'); const ctx = canvas.getContext('2d');
 let W = 0, H = 0, DPR = 1;
-function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = Math.floor(innerWidth * DPR); H = Math.floor(innerHeight * DPR); canvas.width = W; canvas.height = H; canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px'; }
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1) * (typeof PERF !== 'undefined' ? PERF.scale : 1); W = Math.floor(innerWidth * DPR); H = Math.floor(innerHeight * DPR); canvas.width = W; canvas.height = H; canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px'; }
 window.addEventListener('resize', resize); resize();
 
 const keys = {};

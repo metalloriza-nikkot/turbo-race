@@ -580,6 +580,12 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && (G.
 window.addEventListener('pointerdown', () => { Snd.init(); if (!G.musicStarted && Snd.ready) { G.musicStarted = true; if (G.demo) Snd.music('menu'); } });
 
 // ---------- Huvudloop ----------
+// Om datorn inte hinner rita 60 bilder per sekund ritar spelet med lägre upplösning (skärmen fylls ändå, bilden blir lite mjukare).
+function autoScale(fms) {
+  const w = PERF.win; w.push(fms); if (w.length < 150) return;
+  const avg = w.reduce((a, b) => a + b, 0) / w.length; w.length = 0;
+  if (avg > 22 && PERF.scale > 0.6) { PERF.scale = PERF.scale > 0.9 ? 0.8 : 0.65; logEv('grafik', 'lägre upplösning ' + PERF.scale, { snittMs: +avg.toFixed(1) }); resize(); G.hudSpr = {}; for (const k in BUILT) if (BUILT[k]) BUILT[k].mini = null; }
+}
 let lastT = performance.now();
 let lastMode = null, loopErrs = 0;
 function loop(now) {
@@ -588,10 +594,13 @@ function loop(now) {
     if (G.mode !== lastMode) { logEv('läge', (lastMode || '–') + ' → ' + G.mode); lastMode = G.mode; }
     const fms = now - lastT, dt = Math.min(0.05, fms / 1000); lastT = now; const t = now / 1000;
     const live = (G.mode === 'race' || G.mode === 'countdown' || G.mode === 'city') && !G.paused && !G.demo && !document.hidden;
+    PERF.live = live; const heap = performance.memory ? performance.memory.usedJSHeapSize / 1048576 : 0;
     if (live && fms < 3000) {
       PERF.frames++; PERF.sum += fms;
-      if (fms > 70) { PERF.hitch++; if (PERF.logged++ < 60) logEv('ryck', Math.round(fms) + ' ms', { js: +PERF.lastJs.toFixed(1), läge: G.mode, partiklar: G.parts.length, röst: !!(window.speechSynthesis && speechSynthesis.speaking) }); }
+      if (fms > 70) { PERF.hitch++; if (PERF.logged++ < 60) logEv('ryck', Math.round(fms) + ' ms', { js: +PERF.lastJs.toFixed(1), läge: G.mode, partiklar: G.parts.length, röst: !!(window.speechSynthesis && speechSynthesis.speaking), minneMB: +heap.toFixed(1), städat: heap && PERF.heap - heap > 0.5 ? +(PERF.heap - heap).toFixed(1) : 0 }); }
+      else autoScale(fms);
     }
+    PERF.heap = heap;
     const js0 = performance.now();
     if ((G.T || G.mode === 'city' || G.mode === 'build') && !G.paused && G.mode !== 'done') { trackTime(dt); const n = 3; for (let k = 0; k < n; k++) update(dt / n); }
     render();

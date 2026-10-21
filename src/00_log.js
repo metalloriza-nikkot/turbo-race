@@ -1,9 +1,26 @@
 // ===================== FELSÖKNINGSLOGG =====================
 // Ringbuffert med händelser + fel. Sparas löpande i localStorage, så loggen från förra sessionen finns kvar
 // även om webbläsaren fick stängas. Exporteras med Ctrl+Skift+L eller från föräldravyn.
-const TR_VERSION = 'v16.9';
+const TR_VERSION = 'v16.10';
 // prestanda: hur jämnt spelet går (ryck = en bildruta som tog över 70 ms)
-const PERF = { frames: 0, sum: 0, js: 0, hitch: 0, logged: 0, lastJs: 0 };
+const PERF = { frames: 0, sum: 0, js: 0, hitch: 0, logged: 0, lastJs: 0, live: false, loaf: 0, heap: 0, scale: 1, win: [], gpu: null };
+// vilket grafikkort webbläsaren använder ("SwiftShader"/"Basic Render" = ingen grafikacceleration)
+function gpuInfo() {
+  if (PERF.gpu) return PERF.gpu;
+  try { const c = document.createElement('canvas'), gl = c.getContext('webgl') || c.getContext('experimental-webgl'); if (!gl) return (PERF.gpu = 'ingen webgl'); const ext = gl.getExtension('WEBGL_debug_renderer_info'); PERF.gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); const lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext(); } catch (e) { PERF.gpu = 'okänt'; }
+  return PERF.gpu;
+}
+// Långa bildrutor enligt webbläsaren själv (Chrome): visar om tiden gick åt till skript, till ritning/layout, eller om huvudtråden var ledig (då väntade den på grafikkortet/systemet)
+try {
+  new PerformanceObserver(list => {
+    for (const e of list.getEntries()) {
+      if (!PERF.live || e.duration < 70 || PERF.loaf++ > 60) continue;
+      const scr = (e.scripts || []).reduce((a, s) => a + s.duration, 0), rend = e.renderStart ? e.startTime + e.duration - e.renderStart : 0;
+      const top = (e.scripts || []).slice().sort((a, b) => b.duration - a.duration)[0];
+      logEv('lång bildruta', Math.round(e.duration) + ' ms', { skript: Math.round(scr), ritning: Math.round(rend), blockerar: Math.round(e.blockingDuration || 0), värst: top ? `${top.invokerType || ''} ${top.invoker || ''} ${Math.round(top.duration)}ms` : '' });
+    }
+  }).observe({ type: 'long-animation-frame', buffered: false });
+} catch (e) { }
 const TRLOG = { buf: [], keys: [], max: 500, start: new Date().toISOString(), prev: null, dirty: false, errs: 0 };
 try { const old = JSON.parse(localStorage.getItem('turbo_log') || 'null'); if (old && old.buf && old.buf.length) TRLOG.prev = old; } catch (e) { }
 function logClock(ms) { const d = new Date(), p = (n, l = 2) => String(n).padStart(l, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}` + (ms ? '.' + p(d.getMilliseconds(), 3) : ''); }
@@ -34,7 +51,7 @@ function logSnapshot() {
     if (typeof SHOW !== 'undefined') o.tvshow = SHOW.active ? { scen: SHOW.i, av: SHOW.scenes.length } : false;
     if (G.gift) o.present = { vald: G.gift.picked, klar: !!G.gift.done };
     o.inställningar = typeof SETTINGS !== 'undefined' ? SETTINGS : null;
-    o.prestanda = PERF.frames ? { bilder: PERF.frames, snittMs: +(PERF.sum / PERF.frames).toFixed(1), snittJsMs: +(PERF.js / PERF.frames).toFixed(1), ryck: PERF.hitch, upplösning: (typeof W !== 'undefined' ? W + '×' + H : '') + ' dpr ' + (typeof DPR !== 'undefined' ? DPR : '') } : null;
+    o.prestanda = PERF.frames ? { grafik: gpuInfo(), skala: PERF.scale, bilder: PERF.frames, snittMs: +(PERF.sum / PERF.frames).toFixed(1), snittJsMs: +(PERF.js / PERF.frames).toFixed(1), ryck: PERF.hitch, upplösning: (typeof W !== 'undefined' ? W + '×' + H : '') + ' dpr ' + (typeof DPR !== 'undefined' ? DPR : '') } : null;
     o.helskärm = !!(document.fullscreenElement || document.webkitFullscreenElement);
     o.fönster = innerWidth + '×' + innerHeight; o.webbläsare = navigator.userAgent;
     try { const pd = playerData(); o.spelare = { läsnivå: pd.read && pd.read.lvl, mattenivå: pd.math && pd.math.lvl, mynt: pd.coins }; } catch (e) { }
