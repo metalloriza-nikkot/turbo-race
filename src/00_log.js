@@ -1,7 +1,9 @@
 // ===================== FELSÖKNINGSLOGG =====================
 // Ringbuffert med händelser + fel. Sparas löpande i localStorage, så loggen från förra sessionen finns kvar
 // även om webbläsaren fick stängas. Exporteras med Ctrl+Skift+L eller från föräldravyn.
-const TR_VERSION = 'v16.8';
+const TR_VERSION = 'v16.9';
+// prestanda: hur jämnt spelet går (ryck = en bildruta som tog över 70 ms)
+const PERF = { frames: 0, sum: 0, js: 0, hitch: 0, logged: 0, lastJs: 0 };
 const TRLOG = { buf: [], keys: [], max: 500, start: new Date().toISOString(), prev: null, dirty: false, errs: 0 };
 try { const old = JSON.parse(localStorage.getItem('turbo_log') || 'null'); if (old && old.buf && old.buf.length) TRLOG.prev = old; } catch (e) { }
 function logClock(ms) { const d = new Date(), p = (n, l = 2) => String(n).padStart(l, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}` + (ms ? '.' + p(d.getMilliseconds(), 3) : ''); }
@@ -32,6 +34,7 @@ function logSnapshot() {
     if (typeof SHOW !== 'undefined') o.tvshow = SHOW.active ? { scen: SHOW.i, av: SHOW.scenes.length } : false;
     if (G.gift) o.present = { vald: G.gift.picked, klar: !!G.gift.done };
     o.inställningar = typeof SETTINGS !== 'undefined' ? SETTINGS : null;
+    o.prestanda = PERF.frames ? { bilder: PERF.frames, snittMs: +(PERF.sum / PERF.frames).toFixed(1), snittJsMs: +(PERF.js / PERF.frames).toFixed(1), ryck: PERF.hitch, upplösning: (typeof W !== 'undefined' ? W + '×' + H : '') + ' dpr ' + (typeof DPR !== 'undefined' ? DPR : '') } : null;
     o.helskärm = !!(document.fullscreenElement || document.webkitFullscreenElement);
     o.fönster = innerWidth + '×' + innerHeight; o.webbläsare = navigator.userAgent;
     try { const pd = playerData(); o.spelare = { läsnivå: pd.read && pd.read.lvl, mattenivå: pd.math && pd.math.lvl, mynt: pd.coins }; } catch (e) { }

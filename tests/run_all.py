@@ -3,7 +3,7 @@ Varje test skriver ut vad det mätte och avslutar med 'no errors' om inga JavaSc
 Användning: python3 tests/run_all.py [namn ...]"""
 import os, subprocess, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
-TESTS = ['test_races', 'test_tvshow', 'test_school', 'test_city', 'test_reading', 'test_math', 'test_saveload', 'test_superturbo', 'test_hunt_route', 'test_soundstrip', 'test_supermeter', 'test_aisuper', 'test_builder']
+TESTS = ['test_races', 'test_tvshow', 'test_school', 'test_city', 'test_reading', 'test_math', 'test_saveload', 'test_superturbo', 'test_hunt_route', 'test_soundstrip', 'test_supermeter', 'test_aisuper', 'test_builder', 'test_laps']
 pick = sys.argv[1:] or TESTS
 bad = []
 for t in pick:

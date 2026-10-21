@@ -219,32 +219,56 @@ function makeGroundPattern(ctx, T) {
 }
 
 // ---------- Rita banan ----------
+// Bara den del av banan som syns ritas (hela banan är ~2000 punkter och ritas 8–10 gånger per bildruta).
+function trackRanges(T, view) {
+  const cl = T.cl, N = cl.N, m = T.hw + T.theme.bw + 80, x0 = view.x0 - m, x1 = view.x1 + m, y0 = view.y0 - m, y1 = view.y1 + m;
+  const on = T._on || (T._on = new Uint8Array(N)); let all = true, any = false;
+  for (let i = 0; i < N; i++) { const v = cl.px[i] > x0 && cl.px[i] < x1 && cl.py[i] > y0 && cl.py[i] < y1 ? 1 : 0; on[i] = v; if (v) any = true; else all = false; }
+  if (all) return [{ c: T.path, l: T.edgeL, r: T.edgeR, off: 0 }];
+  if (!any) return [];
+  const out = [], eo = T.hw - 12;
+  for (let s = 0; s < N; s++) {
+    if (!on[s] || on[(s - 1 + N) % N]) continue;
+    let e = s; while (on[(e + 1) % N] && e - s < N) e++;
+    const c = new Path2D(), l = new Path2D(), r = new Path2D();
+    for (let k = s - 1; k <= e + 1; k++) {
+      const i = ((k % N) + N) % N, x = cl.px[i], y = cl.py[i], nx = cl.nx[i], ny = cl.ny[i];
+      if (k === s - 1) { c.moveTo(x, y); l.moveTo(x - nx * eo, y - ny * eo); r.moveTo(x + nx * eo, y + ny * eo); }
+      else { c.lineTo(x, y); l.lineTo(x - nx * eo, y - ny * eo); r.lineTo(x + nx * eo, y + ny * eo); }
+    }
+    out.push({ c, l, r, off: (s - 1) * cl.step });
+  }
+  return out;
+}
 function drawTrackBase(ctx, T, view, time) {
   const th = T.theme, hw = T.hw;
   if (!T.groundPat) T.groundPat = makeGroundPattern(ctx, T);
-  ctx.fillStyle = T.groundPat; ctx.fillRect(view.x0, view.y0, view.x1 - view.x0, view.y1 - view.y0);
+  // marken fylls bara över skärmen (förr: en roterad kvadrat runt kameran, ~2,5 gånger fler pixlar)
+  const M = ctx.getTransform(); T.groundPat.setTransform(M);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = T.groundPat; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
   for (const s of T.special) if (s.kind !== 'sofa') drawSpecial(ctx, s, time, view);
   for (const o of T.decor) {
     if (o.x + o.r * 1.6 < view.x0 || o.x - o.r * 1.6 > view.x1 || o.y + o.r * 1.6 < view.y0 || o.y - o.r * 1.6 > view.y1) continue;
     drawDecor(ctx, o, time);
   }
   for (const s of T.special) if (s.kind === 'sofa') drawSpecial(ctx, s, time, view);
+  const RG = trackRanges(T, view), S = () => { for (const q of RG) { ctx.lineDashOffset = q.off; ctx.stroke(q.c); } ctx.lineDashOffset = 0; };
   ctx.lineJoin = 'round'; ctx.lineCap = 'butt';
   // skugga
   ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = hw * 2 + th.bw * 2 + 16;
-  ctx.save(); ctx.translate(6, 10); ctx.stroke(T.path); ctx.restore();
+  ctx.save(); ctx.translate(6, 10); S(); ctx.restore();
   // kant
-  if (th.ground === 'snow') { ctx.strokeStyle = '#b8cce0'; ctx.lineWidth = hw * 2 + th.bw * 2 + 22; ctx.stroke(T.path); }
-  ctx.strokeStyle = th.b1; ctx.lineWidth = hw * 2 + th.bw * 2; ctx.stroke(T.path);
-  if (th.ground === 'snow') { ctx.setLineDash([6, 90]); ctx.strokeStyle = th.b2; ctx.lineWidth = hw * 2 + th.bw * 2 - 4; ctx.stroke(T.path); ctx.setLineDash([]); }
-  else if (th.ground === 'rock') { ctx.strokeStyle = th.b2; ctx.lineWidth = hw * 2 + th.bw * 2 - 14; ctx.stroke(T.path); ctx.setLineDash([22, 30]); ctx.strokeStyle = 'rgba(255,120,40,0.55)'; ctx.lineWidth = hw * 2 + th.bw * 2 - 8; ctx.stroke(T.path); ctx.setLineDash([]); }
-  else { ctx.setLineDash([46, 46]); ctx.strokeStyle = th.b2; ctx.stroke(T.path); ctx.setLineDash([]); }
+  if (th.ground === 'snow') { ctx.strokeStyle = '#b8cce0'; ctx.lineWidth = hw * 2 + th.bw * 2 + 22; S(); }
+  ctx.strokeStyle = th.b1; ctx.lineWidth = hw * 2 + th.bw * 2; S();
+  if (th.ground === 'snow') { ctx.setLineDash([6, 90]); ctx.strokeStyle = th.b2; ctx.lineWidth = hw * 2 + th.bw * 2 - 4; S(); ctx.setLineDash([]); }
+  else if (th.ground === 'rock') { ctx.strokeStyle = th.b2; ctx.lineWidth = hw * 2 + th.bw * 2 - 14; S(); ctx.setLineDash([22, 30]); ctx.strokeStyle = 'rgba(255,120,40,0.55)'; ctx.lineWidth = hw * 2 + th.bw * 2 - 8; S(); ctx.setLineDash([]); }
+  else { ctx.setLineDash([46, 46]); ctx.strokeStyle = th.b2; S(); ctx.setLineDash([]); }
   // väg
-  ctx.strokeStyle = th.road; ctx.lineWidth = hw * 2; ctx.stroke(T.path);
-  if (th.planks) { ctx.setLineDash([3, 24]); ctx.strokeStyle = th.planks; ctx.lineWidth = hw * 2; ctx.stroke(T.path); ctx.setLineDash([]); }
+  ctx.strokeStyle = th.road; ctx.lineWidth = hw * 2; S();
+  if (th.planks) { ctx.setLineDash([3, 24]); ctx.strokeStyle = th.planks; ctx.lineWidth = hw * 2; S(); ctx.setLineDash([]); }
   // kantlinjer
-  ctx.strokeStyle = th.edge; ctx.lineWidth = 6; ctx.stroke(T.edgeL); ctx.stroke(T.edgeR);
-  if (th.center) { ctx.setLineDash([36, 44]); ctx.strokeStyle = th.center; ctx.globalAlpha = 0.7; ctx.lineWidth = 6; ctx.stroke(T.path); ctx.globalAlpha = 1; ctx.setLineDash([]); }
+  ctx.strokeStyle = th.edge; ctx.lineWidth = 6; for (const q of RG) { ctx.stroke(q.l); ctx.stroke(q.r); }
+  if (th.center) { ctx.setLineDash([36, 44]); ctx.strokeStyle = th.center; ctx.globalAlpha = 0.7; ctx.lineWidth = 6; S(); ctx.globalAlpha = 1; ctx.setLineDash([]); }
   // start/mål
   const cl = T.cl; ctx.save(); ctx.translate(cl.px[0], cl.py[0]); ctx.rotate(cl.ang[0]);
   const sq = 20; for (let r = 0; r < 2; r++) for (let k = -Math.round(hw / sq); k < Math.round(hw / sq); k++) { ctx.fillStyle = (k + r) % 2 ? '#111' : '#fff'; ctx.fillRect(-sq + r * sq, k * sq, sq, sq); }

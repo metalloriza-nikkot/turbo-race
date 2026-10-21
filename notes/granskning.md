@@ -1,4 +1,4 @@
-# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.8)
+# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.9)
 
 Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 år) sker utan att barnet tänker på det.
 
@@ -71,6 +71,17 @@ Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 �
 - **Turneringen sparas automatiskt** i början av varje lopp och efter varje målgång. Klickar man TURNERING med en ofärdig turnering får man välja ▶ FORTSÄTT (bana X av 7, poäng hittills) eller NY TURNERING. Hubben visar en PÅGÅR-etikett. Avbryts ett lopp mitt i börjar man om just det loppet nästa gång – poängen från tidigare banor finns kvar.
 - Testat hela vägen: skapa spelare → turnering → lopp 1 → Esc mitt i lopp 2 → spara → töm webbläsaren → ladda filen → fortsätt → lopp 2 räknas vidare på rätt poäng.
 - Detta är förberedelsen för att flytta spelet till GitHub Pages (profilen flyttas med en sparfil).
+
+## v16.9 – Välj antal varv, jämnare bildrutor (2026-10-21)
+- **Antal varv i enskilda lopp:** på HUR SNABBT?-skärmen finns en rad 🔁 VARV: 1 2 3 4 5 10. Förvalt är banans eget antal (3 på de vanliga, uträknat på egna banor). Valet gäller tills man byter bana, även för KÖR IGEN. Turneringen har fast antal varv (ingen rad där).
+- **Ryck under loppet – åtgärder:** filstorleken (ca 640 kB) är inte orsaken, den läses in en gång. Det som kostade mest per bildruta:
+  - Banan (kanter, väg, streck) ritades i sin helhet, ~2000 punkter, 8–10 gånger per bildruta. Nu ritas bara den del som syns.
+  - Marken fylldes över en roterad kvadrat runt kameran (~2,5 gånger skärmytan). Nu fylls bara skärmen.
+  - Minikartan ritades om varje bildruta – nu en gång per lopp.
+  - Ansikten och bilar i ställningslistan (en del bilar har glöd-effekt) ritades om varje bildruta – nu en gång per lopp.
+  - Talsyntesens röstlista hämtades vid varje replik – nu en gång.
+- **Ryckmätare i felsökningsloggen:** varje bildruta över 70 ms loggas som `[ryck]` med hur lång tid spelkoden tog, om rösten pratade och antal partiklar. Tillståndet visar snitt-bildtid och antal ryck. Kvarstår ryck: Ctrl+Skift+L efter loppet och skicka loggen.
+- Test: `tests/test_laps.py`.
 
 ## v16.8 – Banbyggaren (2026-10-21)
 - Ny knapp i menyn: 🛠️ BYGG BANA → MINA BANOR (upp till 8 per spelare) → välj miljö → kör fram vägen.

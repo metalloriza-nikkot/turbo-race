@@ -243,7 +243,7 @@ const previewCanvases = [];
 function buildDrivers() {
   const g = $('#driver-grid'); g.innerHTML = '';
   DRIVERS.forEach((d, i) => {
-    const b = mkBtn('card', `<canvas width="240" height="200"></canvas><div class="lbl">${d.name}</div>${d.by ? `<div class="by">DESIGN: ${d.by}</div>` : ''}`, d.say + (d.by ? ` Designad av ${d.by.toLowerCase()}.` : ''), () => { SEL.driver = i; if (SEL.mode === 'cup') { SEL.track = -1; showScreen('diff'); } else if (SEL.fixedTrack) { const k = allTracks().findIndex(t => t.id === SEL.fixedTrack); SEL.fixedTrack = null; if (k >= 0) { SEL.track = k; showScreen('diff'); } else goTracks(); } else goTracks(); });
+    const b = mkBtn('card', `<canvas width="240" height="200"></canvas><div class="lbl">${d.name}</div>${d.by ? `<div class="by">DESIGN: ${d.by}</div>` : ''}`, d.say + (d.by ? ` Designad av ${d.by.toLowerCase()}.` : ''), () => { SEL.driver = i; if (SEL.mode === 'cup') { SEL.track = -1; goDiff(); } else if (SEL.fixedTrack) { const k = allTracks().findIndex(t => t.id === SEL.fixedTrack); SEL.fixedTrack = null; if (k >= 0) { SEL.track = k; goDiff(); } else goTracks(); } else goTracks(); });
     b.style.setProperty('--c', d.type === 'police' ? '#1f5fd6' : d.color === '#23262f' ? '#35d0ff' : d.color); if (d.type === 'jeep') b.querySelector('.lbl').style.fontSize = '24px';
     g.appendChild(b); previewCanvases.push({ el: b.querySelector('canvas'), kind: 'car', i, btn: b });
   });
@@ -255,7 +255,7 @@ function buildTracks() {
   const g = $('#track-grid'); g.innerHTML = '';
   for (let k = previewCanvases.length - 1; k >= 0; k--) if (previewCanvases[k].kind === 'track') previewCanvases.splice(k, 1);
   allTracks().forEach((t, i) => {
-    const b = mkBtn('card wide' + (t.own ? ' own' : ''), `<canvas width="320" height="220"></canvas><div class="lbl"><span class="ico">${t.icon}</span> ${esc(t.name)}</div><div class="medal"></div>${t.own ? '<div class="badge">MIN BANA</div>' : ''}`, t.say + (t.own ? '. Din egen bana!' : ''), () => { SEL.track = i; showScreen('diff'); });
+    const b = mkBtn('card wide' + (t.own ? ' own' : ''), `<canvas width="320" height="220"></canvas><div class="lbl"><span class="ico">${t.icon}</span> ${esc(t.name)}</div><div class="medal"></div>${t.own ? '<div class="badge">MIN BANA</div>' : ''}`, t.say + (t.own ? '. Din egen bana!' : ''), () => { SEL.track = i; goDiff(); });
     b.dataset.idx = i; g.appendChild(b); previewCanvases.push({ el: b.querySelector('canvas'), kind: 'track', def: t, btn: b, drawn: false });
   });
 }
@@ -281,7 +281,20 @@ function drawTrackPreview(cv, def) {
   c.restore();
 }
 
-// ---------- Svårighet ----------
+// ---------- Svårighet + antal varv ----------
+const LAP_CHOICES = [1, 2, 3, 4, 5, 10];
+function goDiff() { buildLaps(); showScreen('diff'); }
+function buildLaps() {
+  const row = $('#lap-row'); row.innerHTML = '';
+  const def = SEL.mode !== 'cup' && allTracks()[SEL.track];
+  row.style.display = def ? '' : 'none'; if (!def) return;
+  const std = def.laps || 3; if (SEL.lapsFor !== def.id) { SEL.laps = std; SEL.lapsFor = def.id; }
+  const lbl = document.createElement('div'); lbl.className = 'laplbl'; lbl.textContent = '🔁 VARV:'; row.appendChild(lbl);
+  for (const n of LAP_CHOICES) {
+    const b = mkBtn('lapbtn' + (n === SEL.laps ? ' on' : ''), String(n), n === 1 ? 'Ett varv' : `${n} varv`, () => { SEL.laps = n; row.querySelectorAll('.lapbtn').forEach(x => x.classList.toggle('on', x.textContent === String(n))); });
+    row.appendChild(b);
+  }
+}
 function buildDiff() {
   const g = $('#diff-grid'); g.innerHTML = '';
   DIFFS.forEach((d, i) => { const b = mkBtn('card diff', `<div class="bigico">${d.icon}</div><div class="lbl">${d.name}</div>`, d.say, () => { SEL.diff = i; beginRace(); }); if (i === SEL.diff) b.dataset.default = '1'; g.appendChild(b); });
@@ -290,7 +303,7 @@ function beginRace() {
   if (SEL.mode === 'cup') { if (!CUP.active) return startCup(); return runCupRace(); }
   CUP.active = false; hideUI(); Voice.stop();
   const def = allTracks()[SEL.track] || TRACK_DEFS[0];
-  startRace(def, { me: playerRacer(), opps: pickOpps(SEL.driver), diff: DIFFS[SEL.diff] });
+  startRace(def, { me: playerRacer(), opps: pickOpps(SEL.driver), diff: DIFFS[SEL.diff], laps: SEL.lapsFor === def.id ? SEL.laps : 0 });
   setTimeout(() => Voice.say(def.say + '! Gör dig redo!', true), 150);
 }
 
@@ -573,9 +586,16 @@ function loop(now) {
   // Ett fel i en enskild bildruta får aldrig frysa spelet: felet loggas och nästa bildruta ritas ändå.
   try {
     if (G.mode !== lastMode) { logEv('läge', (lastMode || '–') + ' → ' + G.mode); lastMode = G.mode; }
-    const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; const t = now / 1000;
+    const fms = now - lastT, dt = Math.min(0.05, fms / 1000); lastT = now; const t = now / 1000;
+    const live = (G.mode === 'race' || G.mode === 'countdown' || G.mode === 'city') && !G.paused && !G.demo && !document.hidden;
+    if (live && fms < 3000) {
+      PERF.frames++; PERF.sum += fms;
+      if (fms > 70) { PERF.hitch++; if (PERF.logged++ < 60) logEv('ryck', Math.round(fms) + ' ms', { js: +PERF.lastJs.toFixed(1), läge: G.mode, partiklar: G.parts.length, röst: !!(window.speechSynthesis && speechSynthesis.speaking) }); }
+    }
+    const js0 = performance.now();
     if ((G.T || G.mode === 'city' || G.mode === 'build') && !G.paused && G.mode !== 'done') { trackTime(dt); const n = 3; for (let k = 0; k < n; k++) update(dt / n); }
     render();
+    PERF.lastJs = performance.now() - js0; if (live) PERF.js += PERF.lastJs;
     if (curScreen === 'driver') for (const p of previewCanvases) if (p.kind === 'car') { const c = p.el.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, p.el.width, p.el.height); const f = document.activeElement === p.btn; const pd = playerData(); const d = styledCar(p.i, pd.equip.paint, pd.equip.sticker); c.save(); c.translate(128, 150); c.scale(1.75, 1.75); drawCarFront(c, d, t + p.i * 0.37, { speed: f ? 1.2 : 0, still: !f, boost: f }); c.restore(); /* liten bild ovanifrån i hörnet: så ser bilen ut på banan */ c.save(); c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.arc(34, 34, 28, 0, TAU); c.fill(); c.translate(34, 34); c.rotate(-Math.PI / 2); c.scale(0.62, 0.62); drawCar(c, d, t); c.restore(); }
     if (curScreen === 'track') for (const p of previewCanvases) if (p.kind === 'track' && !p.drawn) { drawTrackPreview(p.el, p.def); p.drawn = true; }
     if (curScreen === 'title') drawTitleCars(t);

@@ -40,7 +40,7 @@ function startRace(def, opts) {
   for (const b of T.boxes) { b.alive = true; b.respawn = 0; }
   for (const p of T.props) { p.x = p.hx; p.y = p.hy; p.a = p.ha; p.idx = p.hi; p.vx = p.vy = p.va = 0; }
   G.skids = []; G.spinLog = {};
-  G.laps = G.school ? 99 : (def.laps || 3); G.cars = []; G.balls = []; G.blobs = []; G.parts = []; G.finishCount = 0; G.time = 0; G.raceT = 0; G.aiSuperSaid = -99; G.banner = null;
+  G.laps = G.school ? 99 : (opts.laps || def.laps || 3); G.hudSpr = {}; G.cars = []; G.balls = []; G.blobs = []; G.parts = []; G.finishCount = 0; G.time = 0; G.raceT = 0; G.aiSuperSaid = -99; G.banner = null;
   const me = opts.me || { car: 0, name: '', fig: DEFAULT_FIG };
   let opps = opts.opps;
   if (!opps) { const free = DRIVERS.map((_, i) => i).filter(i => i !== me.car).sort(() => Math.random() - 0.5); const chars = PREMADE.slice().sort(() => Math.random() - 0.5); opps = free.slice(0, 4).map((car, k) => ({ car, name: chars[k].name, fig: chars[k].fig })); }
@@ -667,6 +667,8 @@ function render() {
   if (G.mode === 'gift' && G.gift) drawGift();
 }
 
+// små bilder i HUD:en (ansikten och bilar i ställningslistan) ritas en gång per lopp i stället för varje bildruta
+function hudSprite(key, w, h, draw) { const S = G.hudSpr || (G.hudSpr = {}); if (!S[key]) { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d')); S[key] = cv; } return S[key]; }
 function drawCarWorld(c, t) {
   const air = c.air > 0 ? Math.sin(Math.PI * (1 - c.air / c.airMax)) : 0;
   const sc = 1 + air * 0.35;
@@ -895,18 +897,26 @@ function drawHUD() {
     const c = G.order[k]; const x = W - 190 * u, y = 50 * u + k * 70 * u;
     ctx.fillStyle = c.isPlayer ? 'rgba(255,214,0,0.85)' : 'rgba(20,10,50,0.55)'; rr(ctx, x - 20 * u, y - 30 * u, 190 * u, 60 * u, 16 * u); ctx.fill();
     txt(String(k + 1), x + 8 * u, y + 2 * u, 34, c.isPlayer ? '#1a1033' : '#fff', 'center', c.isPlayer ? 0 : 5);
-    if (c.who) drawFace(ctx, c.who.fig, x + 58 * u, y, 25 * u, G.time);
+    if (c.who) { const R = 25 * u, n = Math.ceil(R * 2 + 6), fc = hudSprite('f' + k + c.who.name + n, n, n, g => drawFace(g, c.who.fig, n / 2, n / 2, R, 0)); ctx.drawImage(fc, x + 58 * u - n / 2, y - n / 2); }
     if (c.superOn && !c.isPlayer) { // motståndare på superturbo: blå glöd + lågor i listan
       ctx.save(); ctx.strokeStyle = '#40c4ff'; ctx.lineWidth = (3 + Math.sin(G.time * 20) * 1.5) * u; ctx.shadowColor = '#40c4ff'; ctx.shadowBlur = 14 * u; rr(ctx, x - 20 * u, y - 30 * u, 190 * u, 60 * u, 16 * u); ctx.stroke(); ctx.restore();
       for (let f = 0; f < 3; f++) { const fl = (14 + Math.random() * 12) * u; ctx.fillStyle = ['#2979ff', '#40c4ff', '#e1f5fe'][f]; ctx.beginPath(); ctx.moveTo(x + 92 * u, y - (6 - f * 2) * u); ctx.lineTo(x + 92 * u - fl * (1 - f * 0.25), y); ctx.lineTo(x + 92 * u, y + (6 - f * 2) * u); ctx.fill(); }
     }
-    ctx.save(); ctx.translate(x + 122 * u, y); ctx.scale(0.72 * u, 0.72 * u); drawCar(ctx, c.d, G.time); ctx.restore();
+    if (c.d.rainbow) { ctx.save(); ctx.translate(x + 122 * u, y); ctx.scale(0.72 * u, 0.72 * u); drawCar(ctx, c.d, G.time); ctx.restore(); }
+    else { const s = 0.72 * u, cw = Math.ceil(140 * s), ch = Math.ceil(90 * s), cc = hudSprite('c' + c.d.id + (c.d.color || '') + (c.d.sticker || '') + cw, cw, ch, g => { g.translate(cw / 2, ch / 2); g.scale(s, s); drawCar(g, c.d, 0); }); ctx.drawImage(cc, x + 122 * u - cw / 2, y - ch / 2); }
   }
   // minikarta
   const ms = 280 * u, mx = W - ms - 24 * u, my = H - ms - 24 * u; const bb = T.bb; const sc = (ms - 40 * u) / Math.max(bb.maxX - bb.minX, bb.maxY - bb.minY);
   ctx.fillStyle = 'rgba(20,10,50,0.55)'; rr(ctx, mx, my, ms, ms, 24 * u); ctx.fill();
+  // banan på minikartan ritas en gång till en egen bild
+  if (!T.mini || T.mini.ms !== Math.ceil(ms)) {
+    const cv = document.createElement('canvas'), n = Math.ceil(ms); cv.width = cv.height = n; const g = cv.getContext('2d');
+    g.translate(ms / 2 - (bb.minX + bb.maxX) / 2 * sc, ms / 2 - (bb.minY + bb.maxY) / 2 * sc); g.scale(sc, sc); g.lineJoin = 'round';
+    g.strokeStyle = '#fff'; g.lineWidth = T.hw * 1.2; g.stroke(T.path); g.strokeStyle = T.theme.minimap; g.lineWidth = T.hw * 0.7; g.stroke(T.path);
+    T.mini = { cv, ms: n };
+  }
+  ctx.drawImage(T.mini.cv, mx, my);
   ctx.save(); ctx.translate(mx + ms / 2 - (bb.minX + bb.maxX) / 2 * sc, my + ms / 2 - (bb.minY + bb.maxY) / 2 * sc); ctx.scale(sc, sc);
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = T.hw * 1.2; ctx.lineJoin = 'round'; ctx.stroke(T.path); ctx.strokeStyle = T.theme.minimap; ctx.lineWidth = T.hw * 0.7; ctx.stroke(T.path);
   ctx.fillStyle = '#ff1744'; for (const h of T.hazards) if (SPINHAZ[h.kind]) { ctx.beginPath(); ctx.arc(h.x, h.y, 9 * u / sc, 0, TAU); ctx.fill(); } for (const m of T.movers) { const q = T.cl; ctx.beginPath(); ctx.arc(q.px[m.i], q.py[m.i], 9 * u / sc, 0, TAU); ctx.fill(); }
   for (const c of G.cars) { if (c.isPlayer) continue; ctx.fillStyle = c.d.color; ctx.strokeStyle = '#000'; ctx.lineWidth = 12 / sc * u; ctx.beginPath(); ctx.arc(c.x, c.y, 11 * u / sc, 0, TAU); ctx.fill(); ctx.stroke(); }
   ctx.fillStyle = '#ffd600'; ctx.strokeStyle = '#000'; ctx.lineWidth = 4 * u / sc; ctx.beginPath(); ctx.arc(P.x, P.y, (16 + Math.sin(G.time * 8) * 3) * u / sc, 0, TAU); ctx.fill(); ctx.stroke();

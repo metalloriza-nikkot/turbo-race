@@ -189,10 +189,10 @@ const Snd = (() => {
 
 // ---------- Röst (text till tal) ----------
 const Voice = (() => {
-  let v = null, lastSaid = '', lastT = 0;
+  let v = null, lastSaid = '', lastT = 0, svList = [];
   function pick() {
     if (!window.speechSynthesis) return;
-    const vs = speechSynthesis.getVoices().filter(x => /^sv/i.test(x.lang));
+    const vs = svList = speechSynthesis.getVoices().filter(x => /^sv/i.test(x.lang));
     v = vs.find(x => x.localService && /alva|klara|oskar/i.test(x.name)) || vs.find(x => x.localService) || vs[0] || null;
   }
   if (window.speechSynthesis) { pick(); speechSynthesis.onvoiceschanged = pick; }
@@ -211,7 +211,7 @@ const Voice = (() => {
   function sayAs(role, text, onend, onword) {
     if (SETTINGS.voiceStyle === 'pladder' && SETTINGS.voice) { const d = Snd.babble(role, text, onword); if (d > 0) { if (onend) setTimeout(onend, d * 1000 + 120); return; } }
     if (!SETTINGS.voice || !window.speechSynthesis) { if (onend) setTimeout(onend, 900 + text.length * 55); return; }
-    const vs = speechSynthesis.getVoices().filter(x => /^sv/i.test(x.lang)); if (!vs.length) { if (onend) setTimeout(onend, 900 + text.length * 55); return; }
+    if (!svList.length) pick(); const vs = svList; if (!vs.length) { if (onend) setTimeout(onend, 900 + text.length * 55); return; }
     const r = ROLE[role] || ROLE.goran; const voice = vs[r[0] % vs.length];
     try { const u = new SpeechSynthesisUtterance(text.replace(/[™*]/g, '')); u.lang = 'sv-SE'; u.voice = voice; u.pitch = r[1]; u.rate = r[2]; let done = false; const fin = () => { if (!done) { done = true; if (onend) onend(); } }; u.onend = fin; u.onerror = fin; if (onword) u.onboundary = e => { if (!e.name || e.name === 'word') onword(); }; setTimeout(fin, 2500 + text.length * 90); speechSynthesis.speak(u); } catch (e) { if (onend) setTimeout(onend, 1000); }
   }
