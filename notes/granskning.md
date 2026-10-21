@@ -1,4 +1,4 @@
-# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.11)
+# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.12)
 
 Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 år) sker utan att barnet tänker på det.
 
@@ -71,6 +71,11 @@ Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 �
 - **Turneringen sparas automatiskt** i början av varje lopp och efter varje målgång. Klickar man TURNERING med en ofärdig turnering får man välja ▶ FORTSÄTT (bana X av 7, poäng hittills) eller NY TURNERING. Hubben visar en PÅGÅR-etikett. Avbryts ett lopp mitt i börjar man om just det loppet nästa gång – poängen från tidigare banor finns kvar.
 - Testat hela vägen: skapa spelare → turnering → lopp 1 → Esc mitt i lopp 2 → spara → töm webbläsaren → ladda filen → fortsätt → lopp 2 räknas vidare på rätt poäng.
 - Detta är förberedelsen för att flytta spelet till GitHub Pages (profilen flyttas med en sparfil).
+
+## v16.12 – Målport på minikartan, alltid senaste versionen (2026-10-21)
+- Minikartan: flaggan ersatt av en målport – rutig banderoll mellan två vita stolpar, tvärs över banan precis på mållinjen. Ritas ovanpå motståndarnas prickar men under spelarens.
+- Niklas logg 21:33 var fortfarande v16.9: service workern gav sparad version först och den nya först vid omladdning nummer två. Nu hämtas spelsidan från nätet först (cachen används om nätet saknas eller tar mer än 4 s), så en vanlig omladdning ger senaste versionen. Versionen syns nere till vänster på startskärmen.
+- Mönster i loggarna (v16.9): ryckningarna kom tätt de första ~8–10 minuterna efter att sidan laddats, och sedan nästan inga alls (lopp 21:19–21:26 utan ryck, finalen 13:48 ett ryck). Talar för uppvärmning i webbläsaren/grafikdrivrutinen eller minnesstädning, inte för spelets egen logik. v16.10-mätningen (grafikkort, långa bildrutor, minnesstädning) ska avgöra.
 
 ## v16.11 – Målgången syns på minikartan (2026-10-21)
 - Önskemål från Niklas: för att kunna köra taktiskt (t.ex. spara superturbon till upploppet) behöver man se hur långt det är kvar. Minikartan har nu en rutig mållinje tvärs över banan och en 🏁-flagga bredvid (på den sida där den inte täcker banan). Gäller alla banor, även egna.

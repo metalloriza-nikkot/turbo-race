@@ -9,6 +9,13 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url); if (url.origin !== self.location.origin) return;
+  // själva spelsidan: hämta från nätet först (så att en ny version syns direkt), cachen om nätet saknas eller är långsamt
+  const page = e.request.mode === 'navigate' || /\/(index\.html)?$/.test(url.pathname);
+  if (page) {
+    const net = fetch(e.request).then(resp => { if (resp && resp.ok) { const cp = resp.clone(); caches.open(CACHE).then(c => c.put('./index.html', cp)); } return resp; });
+    e.respondWith(Promise.race([net, new Promise((_, no) => setTimeout(no, 4000))]).catch(() => caches.match('./index.html').then(hit => hit || net)));
+    return;
+  }
   // först från cachen (snabbt och offline), annars från nätet
   e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(resp => {
     if (resp && resp.ok) { const cp = resp.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); }

@@ -63,6 +63,7 @@ button.nav:focus, button.nav:hover { transform: scale(1.08) translateY(-3px); bo
 .card canvas { width: 176px; height: auto; border-radius: 18px; background: radial-gradient(circle, #e8eaf6, #c5cae9); }
 .card.wide canvas { width: 250px; }
 .card { position: relative; }
+.ver { position: fixed; left: 12px; bottom: 8px; font-size: 13px; opacity: 0.55; }
 #lap-row { align-items: center; gap: 12px; } #lap-row .laplbl { font-size: 30px; font-weight: bold; margin-right: 6px; }
 .nav.lapbtn { min-width: 74px; height: 74px; border-radius: 20px; font-size: 36px; font-weight: bold; background: #fff; color: var(--ink); border: 0; box-shadow: 0 6px 0 #9e9e9e; cursor: pointer; } .nav.lapbtn.on { background: var(--yellow, #ffd600); box-shadow: 0 6px 0 #c49000; } .card.own { --c: #ff4081; } .card .badge { z-index: 2; }
 #bt-cv { width: min(440px, 80vw); border-radius: 22px; border: 5px solid #fff; box-shadow: 0 8px 0 rgba(0,0,0,0.3); }
@@ -176,6 +177,7 @@ canvas.facecv { flex: none; }
     <canvas id="title-cars" width="880" height="140"></canvas>
     <div class="row" id="name-row"></div>
     <div class="hint"><span class="kbd">▲</span> gas · <span class="kbd">▼</span> back · <span class="kbd">◀</span><span class="kbd">▶</span> sväng · <span class="kbd">MELLANSLAG</span> power-up · välj med <span class="kbd">ENTER</span> · <span class="kbd">F</span> = helskärm</div>
+    <div class="ver" id="ver"></div>
   </section>
   <section class="screen" id="scr-name" data-say="Skriv ditt namn">
     <button class="nav small backbtn" id="name-back" data-say="Tillbaka">◀ TILLBAKA</button>

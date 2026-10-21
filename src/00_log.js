@@ -1,7 +1,7 @@
 // ===================== FELSÖKNINGSLOGG =====================
 // Ringbuffert med händelser + fel. Sparas löpande i localStorage, så loggen från förra sessionen finns kvar
 // även om webbläsaren fick stängas. Exporteras med Ctrl+Skift+L eller från föräldravyn.
-const TR_VERSION = 'v16.11';
+const TR_VERSION = 'v16.12';
 // prestanda: hur jämnt spelet går (ryck = en bildruta som tog över 70 ms)
 const PERF = { frames: 0, sum: 0, js: 0, hitch: 0, logged: 0, lastJs: 0, live: false, loaf: 0, heap: 0, scale: 1, win: [], gpu: null };
 // vilket grafikkort webbläsaren använder ("SwiftShader"/"Basic Render" = ingen grafikacceleration)

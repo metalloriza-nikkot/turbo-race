@@ -88,6 +88,7 @@ function drawLiveFaces(t) { document.querySelectorAll('.screen.on canvas.facecv'
 
 // ---------- Startskärm: välj spelare ----------
 function buildTitle() {
+  $('#ver').textContent = TR_VERSION;
   const row = $('#name-row'); row.innerHTML = '';
   for (const n of PROF.names) {
     const pd = PROF.players[n]; const cups = PROF.cups[n] || 0;
