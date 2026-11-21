@@ -181,7 +181,7 @@ function cityCollide(C, c) {
     const vn = c.vx * dx + c.vy * dy; if (vn < 0) { c.vx -= dx * vn * 1.5; c.vy -= dy * vn * 1.5; if (-vn > 120) hit = true; }
   };
   for (const b of C.buildings) if (c.x > b.x0 - 60 && c.x < b.x1 + 60 && c.y > b.y0 - 60 && c.y < b.y1 + 60) pushRect(b);
-  for (const w of C.water) if (c.y > w.y0 - 60 && c.y < w.y1 + 60 && c.x > w.x0 - 60 && c.x < w.x1 + 60) pushRect(w);
+  if (!(c.d && c.d.water)) for (const w of C.water) if (c.y > w.y0 - 60 && c.y < w.y1 + 60 && c.x > w.x0 - 60 && c.x < w.x1 + 60) pushRect(w); // vattenfarkoster kör ned i floden
   for (const o of C.circles) { const dx = c.x - o.x, dy = c.y - o.y, d = Math.hypot(dx, dy), m = r + o.r; if (d < m && d > 0.01) { c.x = o.x + dx / d * m; c.y = o.y + dy / d * m; const nx = dx / d, ny = dy / d, vn = c.vx * nx + c.vy * ny; if (vn < 0) { c.vx -= nx * vn * 1.5; c.vy -= ny * vn * 1.5; if (-vn > 120) hit = true; } } }
   const E = CITY_EDGE; if (c.x < E.x0 + r) { c.x = E.x0 + r; c.vx = Math.abs(c.vx) * 0.5; hit = true; } if (c.x > E.x1 - r) { c.x = E.x1 - r; c.vx = -Math.abs(c.vx) * 0.5; hit = true; } if (c.y < E.y0 + r) { c.y = E.y0 + r; c.vy = Math.abs(c.vy) * 0.5; hit = true; } if (c.y > E.y1 - r) { c.y = E.y1 - r; c.vy = -Math.abs(c.vy) * 0.5; hit = true; }
   return hit;
@@ -190,7 +190,11 @@ function cityStepCar(C, c, dt, frozen) {
   const up = keys.ArrowUp || keys.KeyW, dn = keys.ArrowDown || keys.KeyS, lf = keys.ArrowLeft || keys.KeyA, rt = keys.ArrowRight || keys.KeyD;
   let thr = frozen ? 0 : up ? 1 : dn ? -1 : 0, steer = frozen ? 0 : (rt ? 1 : 0) - (lf ? 1 : 0);
   const ca = Math.cos(c.a), sa = Math.sin(c.a); let fs = c.vx * ca + c.vy * sa, ls = -c.vx * sa + c.vy * ca;
-  const surf = citySurface(C, c.x, c.y); c.surf = surf;
+  const inRiver = !!(c.d && c.d.water) && C.water.some(w => c.x > w.x0 && c.x < w.x1 && c.y > w.y0 && c.y < w.y1);
+  if (inRiver && !c.wet && c.air <= 0) waterEnter(c);
+  if (inRiver && c.d.water === 'hover' && c.fishCool <= 0 && Math.abs(c.fs) > 120) { c.fishT = 6; c.fishCool = 8; addText(c.x, c.y - 40, 'NAPP! 🐟', '#ffb74d'); Snd.play('coin'); }
+  c.wet = inRiver && c.air <= 0;
+  const surf = inRiver ? (c.d.water === 'sub' ? 1.15 : 1.1) : citySurface(C, c.x, c.y); c.surf = surf;
   let cap = CITY_CAP * surf, grip = c.air > 0 ? 0.3 : 11;
   if (c.boost > 0) cap *= 1.4;
   if (c.air > 0) { thr = 0; steer *= 0.2; }

@@ -244,7 +244,7 @@ const previewCanvases = [];
 function buildDrivers() {
   const g = $('#driver-grid'); g.innerHTML = '';
   DRIVERS.forEach((d, i) => {
-    const b = mkBtn('card', `<canvas width="240" height="200"></canvas><div class="lbl">${d.name}</div>${d.by ? `<div class="by">DESIGN: ${d.by}</div>` : ''}`, d.say + (d.by ? ` Designad av ${d.by.toLowerCase()}.` : ''), () => { SEL.driver = i; if (SEL.mode === 'cup') { SEL.track = -1; goDiff(); } else if (SEL.fixedTrack) { const k = allTracks().findIndex(t => t.id === SEL.fixedTrack); SEL.fixedTrack = null; if (k >= 0) { SEL.track = k; goDiff(); } else goTracks(); } else goTracks(); });
+    const b = mkBtn('card', `<canvas width="240" height="200"></canvas><div class="lbl">${d.name}</div>${d.by ? `<div class="by">DESIGN: ${d.by}</div>` : ''}${d.water ? '<div class="wbadge" title="Extra bra i vatten">🌊</div>' : ''}`, d.say + (d.by ? ` Designad av ${d.by.toLowerCase()}.` : ''), () => { SEL.driver = i; if (SEL.mode === 'cup') { SEL.track = -1; goDiff(); } else if (SEL.fixedTrack) { const k = allTracks().findIndex(t => t.id === SEL.fixedTrack); SEL.fixedTrack = null; if (k >= 0) { SEL.track = k; goDiff(); } else goTracks(); } else goTracks(); });
     b.style.setProperty('--c', d.type === 'police' ? '#1f5fd6' : d.color === '#23262f' ? '#35d0ff' : d.color); if (d.type === 'jeep') b.querySelector('.lbl').style.fontSize = '24px';
     g.appendChild(b); previewCanvases.push({ el: b.querySelector('canvas'), kind: 'car', i, btn: b });
   });

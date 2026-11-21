@@ -13,7 +13,7 @@ const DIFFS = [
   { id: 'hard', name: 'SNABB', icon: '🚀', say: 'Snabb', aiSuper: { rate: 4.5, dose: 100 }, ai: 0.985, items: 0.8, ahead: 1500, behindBoost: 1.16, homePlayer: true },
 ];
 const easyish = () => G.diff.id === 'easy' || G.diff.id === 'beginner';
-const SLIP = { saft: 1, ice: 1, slime: 1, puddle: 1 }, SPINHAZ = { lava: 1, oil: 1 };
+const SLIP = { saft: 1, ice: 1, slime: 1, puddle: 1 }, SPINHAZ = { lava: 1, oil: 1 }, LIQ = { puddle: 1, saft: 1 };
 const PROP_KINDS = { lego: 1, block: 1, cone: 1, bucket: 1, bball: 1, snowball: 1, stone: 1, meteor: 1, trophy: 1 };
 const SPIN_T = 0.6, SPIN_SAFE = 2.0;
 const CAP = 460, ACC = 640, TURN = 3.3, CAR_R = 24;
@@ -139,8 +139,10 @@ function stepCar(c, ctl, dt) {
   let fs = c.vx * ca + c.vy * sa, ls = -c.vx * sa + c.vy * ca;
   let grip = 14, cap = c.cap, acc = ACC, turn = TURN;
   if (c.air <= 0) {
-    if (SLIP[c.surf]) { grip = 1.3; acc *= 0.75; turn *= 0.85; }
-    if (c.surf === 'sand') cap *= 0.55;
+    // vattenfarkoster (Hajbilen, Svävaren) halkar inte i pölar/saft; svävaren svävar dessutom över is och sand
+    const wt = c.d.water, immune = wt && (LIQ[c.surf] || (wt === 'hover' && (c.surf === 'ice' || c.surf === 'sand')));
+    if (SLIP[c.surf] && !immune) { grip = 1.3; acc *= 0.75; turn *= 0.85; }
+    if (c.surf === 'sand' && !immune) cap *= 0.55;
   }
   if (c.boost > 0) { cap *= (c.boostMul || 1.45); acc *= 2.2; }
   if (c.spin > 0) { thr = 0; steer = 0; c.a += c.spinDir * 13 * dt; fs *= Math.exp(-2.2 * dt); grip = 3; }
@@ -217,7 +219,8 @@ function stepCar(c, ctl, dt) {
   // hopp över ramper
   for (const r of T.ramps) {
     const a = (r.i - old + N) % N, b = (r.i - c.idx + N) % N;
-    if (dd > 0 && a > 0 && a <= dd && c.fs > 160 && c.air <= 0) { c.airMax = 0.45 + c.fs / 1400; c.air = c.airMax; if (c.isPlayer) Snd.play('jump'); }
+    if (dd > 0 && a > 0 && a <= dd && c.fs > 160 && c.air <= 0) { c.airMax = 0.45 + c.fs / 1400; c.air = c.airMax; if (c.isPlayer) Snd.play('jump');
+      if (r.kind === 'wave' && c.d.water) { giveBoost(c, 1.0, 1.4); c.airMax += 0.15; c.air = c.airMax; splash(c, 14); if (c.isPlayer) addText(c.x, c.y - 30, c.d.water === 'sub' ? 'HAJ-SURF! 🌊' : 'SURF! 🌊', '#4fc3f7'); } }
   }
   // tidigare timers
   carTrail(c, dt);
@@ -358,7 +361,7 @@ function near(c) { return !G.demo && G.player && dist2(c.x, c.y, G.player.x, G.p
 function effects(c, dt) {
   const T = G.T;
   c.surf = null;
-  if (c.air > 0) return;
+  if (c.air > 0) { c.wet = false; return; }
   for (const h of T.hazards) {
     if (dist2(c.x, c.y, h.x, h.y) < h.r * h.r * 0.85) {
       c.surf = h.kind;
@@ -367,6 +370,7 @@ function effects(c, dt) {
       else if (h.kind === 'sand' && Math.abs(c.fs) > 100 && Math.random() < dt * 20) G.parts.push({ x: c.x - Math.cos(c.a) * 30, y: c.y - Math.sin(c.a) * 30, vx: (Math.random() - 0.5) * 60, vy: (Math.random() - 0.5) * 60, life: 0.6, max: 0.6, size: 10, color: '#e0b877', type: 'dot' });
     }
   }
+  const wet = !!(c.d.water && LIQ[c.surf]); if (wet && !c.wet) waterEnter(c); c.wet = wet;
   for (const b of T.boosts) {
     const dx = c.x - b.x, dy = c.y - b.y; const along = dx * Math.cos(b.a) + dy * Math.sin(b.a), side = -dx * Math.sin(b.a) + dy * Math.cos(b.a);
     if (Math.abs(along) < 55 && Math.abs(side) < 45 && c.padCool <= 0) { giveBoost(c, 0.8, 1.35); c.padCool = 0.5; if (c.isPlayer) Snd.play('boost'); }
@@ -481,7 +485,63 @@ function addText(x, y, text, color) { G.parts.push({ x, y, vx: 0, vy: -60, life:
 function confetti() { const p = G.player; for (let k = 0; k < 120; k++) { const a = Math.random() * TAU, s = 150 + Math.random() * 500; G.parts.push({ x: p.x, y: p.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 2 + Math.random(), max: 3, size: 10, color: `hsl(${Math.random() * 360},90%,60%)`, type: 'conf', rot: Math.random() * 6 }); } }
 
 // Bilar med eget spår: RC-racern pruttar eld, Återvinnaren blåser gröna bio-avgaser med löv
+// ---------- vattenfarkosterna ----------
+// in i vatten (pöl, saft, floden i staden): plask, en liten turbo och – för svävaren – napp på kroken
+function splash(c, n) { for (let k = 0; k < n; k++) { const a = Math.random() * TAU, v = 80 + Math.random() * 160; G.parts.push({ x: c.x, y: c.y, vx: Math.cos(a) * v + c.vx * 0.3, vy: Math.sin(a) * v + c.vy * 0.3, life: 0.6, max: 0.6, size: 6 + Math.random() * 6, color: k % 3 ? '#81d4fa' : '#ffffff', type: 'dot' }); } G.parts.push({ x: c.x, y: c.y, vx: 0, vy: 0, life: 0.6, max: 0.6, size: 40, color: 'rgba(225,245,254,0.9)', type: 'ring' }); }
+function waterEnter(c) {
+  if ((c.splashCool || 0) > 0) return; c.splashCool = 1.2;
+  giveBoost(c, 0.6, 1.3); splash(c, 12);
+  if (c.isPlayer || (typeof near === 'function' && near(c))) Snd.play('splash');
+  if (c.d.water === 'hover' && (c.fishCool || 0) <= 0) { c.fishT = 7; c.fishCool = 9; if (c.isPlayer) addText(c.x, c.y - 40, 'NAPP! 🐟', '#ffb74d'); }
+  else if (c.isPlayer) addText(c.x, c.y - 40, c.d.water === 'sub' ? 'HAJ-DYK! 🦈' : 'PLASK! 💦', '#4fc3f7');
+}
+// fiskelinan bakom svävaren: en kedja punkter som släpar efter spötoppen och fladdrar i fartvinden
+function ropeStep(c, dt) {
+  const ca = Math.cos(c.a), sa = Math.sin(c.a), tx = c.x - ca * 44 - sa * 19, ty = c.y - sa * 44 + ca * 19, n = 10, seg = 9;
+  let R = c.rope;
+  if (!R || Math.hypot(R[0].x - tx, R[0].y - ty) > 400) { R = c.rope = []; for (let k = 0; k < n; k++) { const x = tx - ca * seg * k, y = ty - sa * seg * k; R.push({ x, y, px: x, py: y }); } }
+  R[0].x = R[0].px = tx; R[0].y = R[0].py = ty;
+  const t = G.time || 0, sp = Math.min(1.5, Math.hypot(c.vx, c.vy) / 400);
+  for (let k = 1; k < n; k++) {
+    const p = R[k], vx = (p.x - p.px) * 0.86, vy = (p.y - p.py) * 0.86; p.px = p.x; p.py = p.y;
+    const f = Math.sin(t * 15 + k * 0.8) * (0.25 + sp) * k * 0.09; p.x += vx - sa * f; p.y += vy + ca * f;
+  }
+  for (let it = 0; it < 3; it++) for (let k = 1; k < n; k++) { const a = R[k - 1], p = R[k], dx = p.x - a.x, dy = p.y - a.y, d = Math.hypot(dx, dy) || 1; if (d > seg) { p.x = a.x + dx / d * seg; p.y = a.y + dy / d * seg; } }
+  c.fishT = Math.max(0, (c.fishT || 0) - dt);
+}
+function drawRope(c, t) {
+  const R = c.rope; if (!R) return;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (const [col, lw] of [['rgba(0,0,0,0.35)', 3.4], ['#eceff1', 1.6]]) { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); R.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); }
+  const L = R[R.length - 1], P = R[R.length - 2], a = Math.atan2(L.y - P.y, L.x - P.x);
+  hookShape(ctx, L.x, L.y, a, 1.6);
+  if (c.fishT > 0) { // en fisk sprattlar på kroken
+    ctx.save(); ctx.translate(L.x + Math.cos(a) * 14, L.y + Math.sin(a) * 14); ctx.rotate(a + Math.sin(t * 18) * 0.5); ctx.globalAlpha = Math.min(1, c.fishT);
+    ctx.fillStyle = '#ff9800'; ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(6, 0, 9, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(22, -5); ctx.lineTo(22, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(2, -1.5, 1.8, 0, TAU); ctx.fill(); ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(1.6, -1.5, 0.9, 0, TAU); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
+  }
+  ctx.lineCap = 'butt';
+}
+// Hajbilen under vattnet: bara ryggfenan sticker upp, med skum och kölvatten
+function drawSharkSub(c, t) {
+  const sp = Math.min(1, Math.hypot(c.vx, c.vy) / 400);
+  ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
+  ctx.globalAlpha = 0.22; drawCar(ctx, c.d, t, { noFx: true }); ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(2, s * 4); ctx.quadraticCurveTo(-20, s * (8 + 10 * sp), -46, s * (14 + 22 * sp)); ctx.stroke(); }
+  ctx.restore();
+  // fenan står alltid upp på skärmen (som i en tecknad film)
+  const rot = G.cam && G.cam.rot || 0;
+  ctx.save(); ctx.translate(c.x - Math.cos(c.a) * 32, c.y - Math.sin(c.a) * 32); ctx.rotate(-rot); ctx.scale(1.8, 1.8);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(0, 4, 24 + Math.sin(t * 9) * 2, 7, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = c.d.dark; ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-14, 4); ctx.quadraticCurveTo(-2, -10, 6, -34); ctx.quadraticCurveTo(8, -12, 16, 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(0, -12, 5, -28); ctx.stroke();
+  ctx.restore(); ctx.lineCap = 'butt';
+}
 function carTrail(c, dt) {
+  if (c.d && c.d.type === 'hover') ropeStep(c, dt);
+  c.splashCool = Math.max(0, (c.splashCool || 0) - dt); c.fishCool = Math.max(0, (c.fishCool || 0) - dt);
   const tr = c.d && c.d.trail; if (!tr || G.parts.length > 520) return;
   const sp = Math.hypot(c.vx, c.vy); c.trailT = (c.trailT || 0) - dt; if (c.trailT > 0) return;
   const ca = Math.cos(c.a), sa = Math.sin(c.a), back = (bx, by) => [c.x + ca * bx - sa * by, c.y + sa * bx + ca * by];
@@ -493,6 +553,15 @@ function carTrail(c, dt) {
     c.fartT = (c.fartT == null ? 3 + Math.random() * 4 : c.fartT) - 0.05;
     if (c.fartT <= 0 && sp > 60) { c.fartT = 6 + Math.random() * 6; for (let k = 0; k < 12; k++) { const a = c.a + Math.PI + (Math.random() - 0.5) * 1.1, v = 90 + Math.random() * 170; const [fx, fy] = back(-44, (Math.random() - 0.5) * 12); G.parts.push({ x: fx, y: fy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.6, max: 0.6, size: 15 + Math.random() * 8, type: 'flame' }); }
       if (c.isPlayer) { addText(c.x - ca * 60, c.y - sa * 60, 'PRUTT! 🔥', '#ffab40'); if (SETTINGS.sfx) Snd.horn('prutt'); } }
+  } else if (tr === 'bubbles') { // Hajbilen: bubblor (många i vatten)
+    c.trailT = c.wet ? 0.03 : sp > 40 ? 0.22 : 0.5;
+    const [x, y] = back(-46, (Math.random() - 0.5) * 12);
+    G.parts.push({ x, y, vx: -ca * 30 + (Math.random() - 0.5) * 40, vy: -sa * 30 + (Math.random() - 0.5) * 40, life: 0.9, max: 0.9, size: 4 + Math.random() * 5, color: 'rgba(225,245,254,0.95)', type: 'ring' });
+  } else if (tr === 'mist') { // Svävaren: luftkudden blåser ut dimma/stänk
+    if (sp < 30 && !c.wet) { c.trailT = 0.3; return; }
+    c.trailT = c.wet ? 0.025 : 0.07;
+    const s = Math.random() < 0.5 ? -1 : 1, [x, y] = back(-30 + Math.random() * 50, s * 24), v = 30 + Math.random() * 50;
+    G.parts.push({ x, y, vx: -sa * s * v + c.vx * 0.1, vy: ca * s * v + c.vy * 0.1, life: 0.7, max: 0.7, size: 6 + Math.random() * 6, color: c.wet ? (Math.random() < 0.5 ? '#81d4fa' : '#ffffff') : 'rgba(236,239,241,0.8)', type: 'puff' });
   } else if (tr === 'bio') {
     c.trailT = c.boost > 0 ? 0.05 : sp > 40 ? 0.09 : 0.22;
     const [x, y] = back(14, -15), s = 20 + Math.random() * 30, a = c.a + Math.PI + (Math.random() - 0.5) * 0.8;
@@ -672,10 +741,12 @@ function hudSprite(key, w, h, draw) { const S = G.hudSpr || (G.hudSpr = {}); if 
 function drawCarWorld(c, t) {
   const air = c.air > 0 ? Math.sin(Math.PI * (1 - c.air / c.airMax)) : 0;
   const sc = 1 + air * 0.35;
+  if (c.rope) drawRope(c, t);
+  if (c.wet && c.d.water === 'sub' && c.air <= 0 && !(c.ghost > 0) && !(c.shield > 0) && !(c.spin > 0)) { drawSharkSub(c, t); return; }
   ctx.save(); ctx.translate(c.x + 5 + air * 22, c.y + 8 + air * 30); ctx.rotate(c.a + (c.visYaw || 0)); ctx.fillStyle = `rgba(0,0,0,${0.3 - air * 0.12})`; rr(ctx, -34, -19, 68, 38, 14); ctx.fill(); ctx.restore();
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a + (c.visYaw || 0)); ctx.scale(sc, sc); if (c.ghost > 0) ctx.globalAlpha = 0.55 + Math.sin(t * 20) * 0.2;
   if (c.boost > 0) { const sup = c.superT > 0; for (let k = 0; k < 3; k++) { ctx.fillStyle = sup ? ['#2979ff', '#40c4ff', '#ffffff'][k] : ['#ff5722', '#ff9800', '#ffeb3b'][k]; const L = (sup ? 55 : 30) - k * 8 + Math.random() * 12; ctx.beginPath(); ctx.moveTo(-30, -9 + k * 3); ctx.lineTo(-30 - L, 0); ctx.lineTo(-30, 9 - k * 3); ctx.fill(); } }
-  drawCar(ctx, c.d, t, { boost: c.boost > 0, siren: c.siren });
+  drawCar(ctx, c.d, t, { boost: c.boost > 0, siren: c.siren, world: true });
   ctx.restore(); ctx.globalAlpha = 1;
   if (c.shield > 0) { const a = c.shield < 2 ? (Math.floor(t * 10) % 2 ? 0.2 : 0.55) : 0.45; ctx.fillStyle = `rgba(79,195,247,${a * 0.5})`; ctx.strokeStyle = `rgba(225,245,254,${a + 0.2})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c.x, c.y, 44 * sc, 0, TAU); ctx.fill(); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(c.x, c.y, 36 * sc, t * 3, t * 3 + 1); ctx.stroke(); }
   if (c.spin > 0) { for (let k = 0; k < 3; k++) { const a = t * 6 + k / 3 * TAU; drawStar(ctx, c.x + Math.cos(a) * 30, c.y - 30 + Math.sin(a) * 10, 9, '#ffeb3b'); } }

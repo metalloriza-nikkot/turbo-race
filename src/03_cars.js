@@ -15,8 +15,18 @@ const DRIVERS = [
   // Familjens egna konstruktioner
   { id: 'rc', name: 'RC-RACERN', say: 'RC-racern. Liten bil, stor fart! Den pruttar eld.', color: '#e53935', dark: '#9a1b17', accent: '#1e88e5', accent2: '#fdd835', type: 'rc', trail: 'fire', by: 'LIAM' },
   { id: 'atervinn', name: 'ÅTERVINNAREN', say: 'Återvinnaren. Renare värld, en last i taget!', color: '#43a047', dark: '#2e7d32', accent: '#e53935', accent2: '#ffb300', type: 'recycle', trail: 'bio', by: 'PAPPA' },
+  // Liams vattenfarkoster: kör som vanliga bilar men är extra bra i vatten (pölar, saft, floden i Turbostaden, vågramper)
+  { id: 'haj', name: 'HAJBILEN', say: 'Hajbilen. En ubåt på hjul som ser ut som en haj. Den älskar vatten!', color: '#8e9cab', dark: '#5d6b7a', accent: '#c62828', accent2: '#eef3f6', type: 'shark', trail: 'bubbles', water: 'sub', by: 'LIAM' },
+  { id: 'svavare', name: 'SVÄVAREN', say: 'Svävaren. Den svävar över vatten, is och sand. Och fiskar samtidigt!', color: '#e53935', dark: '#b71c1c', accent: '#fdd835', accent2: '#fb8c00', type: 'hover', trail: 'mist', water: 'hover', by: 'LIAM' },
 ];
 
+// fiskekrok (silver J med hulling); spetsen pekar i riktningen a
+function hookShape(ctx, x, y, a, sc) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(sc, sc); ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 0); ctx.arc(7, 4, 4, -Math.PI / 2, Math.PI * 0.75); ctx.stroke();
+  ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(7, 0); ctx.arc(7, 4, 4, -Math.PI / 2, Math.PI * 0.75); ctx.stroke();
+  ctx.fillStyle = '#cfd8dc'; ctx.beginPath(); ctx.moveTo(4, 6.5); ctx.lineTo(3, 3); ctx.lineTo(6, 5); ctx.closePath(); ctx.fill(); ctx.lineCap = 'butt'; ctx.restore();
+}
 function shade2(c) { return c.startsWith('#') ? shade(c, 1.18) : c; }
 function wheel(ctx, x, y, w, h) { ctx.fillStyle = '#1a1a1a'; rr(ctx, x - w / 2, y - h / 2, w, h, Math.min(w, h) * 0.35); ctx.fill(); ctx.fillStyle = '#444'; ctx.fillRect(x - w / 2 + 2, y - 1, w - 4, 2); }
 
@@ -303,6 +313,74 @@ function drawCarBase(ctx, d, time, o = {}) {
       // blinkande orange varningsljus
       const on = Math.floor(time * 4) % 2; for (const s of [-1, 1]) { ctx.shadowColor = '#ffb300'; ctx.shadowBlur = (on ^ (s > 0)) ? 12 : 0; ctx.fillStyle = (on ^ (s > 0)) ? '#ffd54f' : (d.accent2 || '#ffb300'); ctx.beginPath(); ctx.arc(20, s * 11, 3, 0, TAU); ctx.fill(); } ctx.shadowBlur = 0;
       ctx.fillStyle = '#fffbe0'; ctx.beginPath(); ctx.arc(38, -12, 2.4, 0, TAU); ctx.arc(38, 12, 2.4, 0, TAU); ctx.fill();
+      break;
+    }
+    case 'shark': { // HAJBILEN – ritad av Liam: ubåt som liknar en haj, blodröd mun med vassa tänder, cockpit, ögonfransar, hjul på fjädrar
+      const sw = o.noFx ? 0 : Math.sin(time * 7);
+      // fjädrar + hjul (under kroppen): stora fram, små bak
+      const spring = (x, y0, y1) => { ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 1.7; ctx.beginPath(); ctx.moveTo(x, y0); for (let k = 1; k <= 6; k++) ctx.lineTo(x + (k % 2 ? 3 : -3), y0 + (y1 - y0) * k / 6); ctx.stroke(); };
+      for (const s of [-1, 1]) { spring(21, s * 11, s * 19); spring(-19, s * 10, s * 18); }
+      wheel(ctx, 21, -22, 16, 8); wheel(ctx, 21, 22, 16, 8); wheel(ctx, -19, -21, 11, 6); wheel(ctx, -19, 21, 11, 6);
+      ctx.strokeStyle = outline; ctx.lineWidth = 2;
+      // stjärtfena som viftar
+      ctx.save(); ctx.translate(-36, 0); ctx.rotate(sw * 0.28); ctx.fillStyle = d.dark;
+      ctx.beginPath(); ctx.moveTo(2, -4); ctx.lineTo(-15, -15); ctx.quadraticCurveTo(-9, 0, -15, 15); ctx.lineTo(2, 4); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+      // bröstfenor
+      ctx.fillStyle = d.dark; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(6, s * 13); ctx.lineTo(-13, s * 25); ctx.lineTo(-4, s * 13); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+      // kropp: torped med vit buk längs kanterna
+      const body = () => { ctx.beginPath(); ctx.moveTo(39, 0); ctx.bezierCurveTo(38, -9, 27, -15, 12, -15); ctx.bezierCurveTo(-8, -15, -26, -12, -38, -4); ctx.lineTo(-38, 4); ctx.bezierCurveTo(-26, 12, -8, 15, 12, 15); ctx.bezierCurveTo(27, 15, 38, 9, 39, 0); ctx.closePath(); };
+      ctx.fillStyle = d.accent2 || '#eef3f6'; body(); ctx.fill(); ctx.stroke();
+      ctx.save(); body(); ctx.clip(); ctx.fillStyle = d.color; ctx.beginPath(); ctx.ellipse(2, 0, 40, 11.5, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.ellipse(-4, 0, 30, 5, 0, 0, TAU); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = outline; ctx.lineWidth = 2; body(); ctx.stroke();
+      // gälar
+      ctx.strokeStyle = 'rgba(40,50,60,0.55)'; ctx.lineWidth = 1.3; for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(2 - k * 4, s * 16, 5, s > 0 ? Math.PI * 1.15 : Math.PI * 0.55, s > 0 ? Math.PI * 1.45 : Math.PI * 0.85); ctx.stroke(); }
+      // ryggfena (med skugga så den syns stå upp)
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.moveTo(4, 1); ctx.lineTo(-17, 4); ctx.lineTo(-12, 9); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = d.dark; ctx.strokeStyle = outline; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(-16, -3.5); ctx.lineTo(-16, 3.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(3, -0.5); ctx.lineTo(-14, -2.5); ctx.stroke();
+      // ögon med ögonfransar
+      const blink = (time % 4.6) < 0.12;
+      for (const s of [-1, 1]) {
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(15, s * 11.5, 3.6, blink ? 0.7 : 3.2, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.stroke();
+        if (!blink) { ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(16, s * 11.5, 1.6, 0, TAU); ctx.fill(); }
+        ctx.strokeStyle = '#222'; ctx.lineWidth = 1.1; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(15 + k * 2.2, s * 14.3); ctx.lineTo(15 + k * 3.3, s * 17); ctx.stroke(); }
+      }
+      // cockpit med förare
+      ctx.fillStyle = 'rgba(129,212,250,0.92)'; ctx.strokeStyle = outline; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(24, 0, 8.5, 7, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffcc80'; ctx.beginPath(); ctx.arc(23, 0, 3.6, 0, TAU); ctx.fill(); ctx.fillStyle = '#6d4c41'; ctx.beginPath(); ctx.arc(21.6, 0, 3.4, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(27, -3, 3, 1.5, -0.4, 0, TAU); ctx.fill();
+      // blodröd mun med vassa tänder
+      ctx.fillStyle = d.accent || '#c62828'; ctx.strokeStyle = outline; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(29, -10.5); ctx.quadraticCurveTo(44, -6, 43, 0); ctx.quadraticCurveTo(44, 6, 29, 10.5); ctx.quadraticCurveTo(36.5, 0, 29, -10.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#7f0000'; ctx.beginPath(); ctx.moveTo(32, -7); ctx.quadraticCurveTo(41, -3, 40.5, 0); ctx.quadraticCurveTo(41, 3, 32, 7); ctx.quadraticCurveTo(37, 0, 32, -7); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 0.6; for (let k = 0; k < 7; k++) { const f = k / 6, y = -9 + f * 18, x = 31 + (1 - Math.abs(y) / 10.5) * 10.5; const nx = Math.abs(y) < 2 ? 1 : 0.7; ctx.beginPath(); ctx.moveTo(x - 1.6, y - 1.8); ctx.lineTo(x + 2.8 * nx, y + (y > 0 ? -0.6 : 0.6)); ctx.lineTo(x - 1.6, y + 1.8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+      break;
+    }
+    case 'hover': { // SVÄVAREN – ritad av Liam: svävare med luftkudde, propeller, flamma på sidan och fiskespö
+      const hb = o.noFx ? 0 : Math.sin(time * 5) * 0.8;
+      ctx.strokeStyle = outline; ctx.lineWidth = 2;
+      // luftkudden (grå kjol med veck)
+      ctx.fillStyle = '#8f9499'; rr(ctx, -35, -22 - hb, 70, 44 + hb * 2, 20); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 1.2; for (let x = -27; x <= 27; x += 6) { ctx.beginPath(); ctx.moveTo(x, -21 - hb); ctx.lineTo(x, -16); ctx.moveTo(x, 16); ctx.lineTo(x, 21 + hb); ctx.stroke(); }
+      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * 33, -12); ctx.lineTo(s * 28, -9); ctx.moveTo(s * 34, 0); ctx.lineTo(s * 29, 0); ctx.moveTo(s * 33, 12); ctx.lineTo(s * 28, 9); ctx.stroke(); }
+      // fiskespö (linan med kroken ritas i världen; här bara en kort bit om bilen visas för sig själv)
+      ctx.strokeStyle = '#6d4c41'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(-26, 9); ctx.lineTo(-44, 19); ctx.stroke(); ctx.fillStyle = '#455a64'; ctx.beginPath(); ctx.arc(-30, 11, 2.4, 0, TAU); ctx.fill();
+      if (!o.world) { ctx.strokeStyle = '#eceff1'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(-44, 19); ctx.quadraticCurveTo(-52, 22 + Math.sin(time * 6) * 3, -56, 30); ctx.stroke(); hookShape(ctx, -56, 30, Math.PI / 2 + Math.sin(time * 6) * 0.3, 1); }
+      // propellerkåpa bak (orange) med snurrande blad
+      ctx.strokeStyle = outline; ctx.lineWidth = 2; ctx.fillStyle = d.accent2 || '#fb8c00'; rr(ctx, -45, -17, 10, 34, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3e2723'; rr(ctx, -43, -14, 6, 28, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; if (!o.noFx) { const ph = (time * 9) % 1; ctx.fillRect(-42.5, -13 + ph * 24, 5, 3); ctx.fillRect(-42.5, -13 + ((ph + 0.5) % 1) * 24, 5, 3); }
+      // kropp: röd nedtill, gul ovanpå med flamma
+      ctx.strokeStyle = outline; ctx.lineWidth = 2; ctx.fillStyle = d.color; rr(ctx, -31, -17, 60, 34, 14); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = d.accent || '#fdd835'; rr(ctx, -24, -13, 48, 26, 11); ctx.fill();
+      ctx.fillStyle = d.color; ctx.beginPath(); ctx.moveTo(-24, -13); ctx.lineTo(-10, -13); ctx.lineTo(-20, 0); ctx.lineTo(-10, 13); ctx.lineTo(-24, 13); ctx.closePath(); ctx.fill();
+      const blob = (x, y, r, col) => { ctx.fillStyle = col; ctx.beginPath(); for (let k = 0; k < 14; k++) { const a = k / 14 * TAU, rr2 = r * (k % 2 ? 0.62 : 1); ctx.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); } ctx.closePath(); ctx.fill(); };
+      blob(-6, -7, 6, '#e53935'); blob(-6, -7, 3.4, '#ff9800'); blob(-6, 7, 6, '#e53935'); blob(-6, 7, 3.4, '#ff9800');
+      // kupol med förare (glasögon!)
+      ctx.fillStyle = 'rgba(179,229,252,0.9)'; ctx.strokeStyle = outline; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(10, 0, 11, 9.5, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffe0b2'; ctx.beginPath(); ctx.arc(9, 0, 4.4, 0, TAU); ctx.fill(); ctx.strokeStyle = '#37474f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(11.3, -1.8, 1.5, 0, TAU); ctx.arc(11.3, 1.8, 1.5, 0, TAU); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(15, -4, 3.5, 1.6, -0.5, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#fffbe0'; ctx.beginPath(); ctx.arc(28, -9, 2.4, 0, TAU); ctx.arc(28, 9, 2.4, 0, TAU); ctx.fill();
       break;
     }
     case 'police': {

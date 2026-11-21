@@ -1,4 +1,4 @@
-# TURBO-RACE – granskning och färdplan (uppdaterad 2026-10-21, v16.12)
+# TURBO-RACE – granskning och färdplan (uppdaterad 2026-11-21, v16.13)
 
 Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 år) sker utan att barnet tänker på det.
 
@@ -71,6 +71,19 @@ Mål: rolig bilupplevelse med humor för barn och vuxna, där lärandet (6–8 �
 - **Turneringen sparas automatiskt** i början av varje lopp och efter varje målgång. Klickar man TURNERING med en ofärdig turnering får man välja ▶ FORTSÄTT (bana X av 7, poäng hittills) eller NY TURNERING. Hubben visar en PÅGÅR-etikett. Avbryts ett lopp mitt i börjar man om just det loppet nästa gång – poängen från tidigare banor finns kvar.
 - Testat hela vägen: skapa spelare → turnering → lopp 1 → Esc mitt i lopp 2 → spara → töm webbläsaren → ladda filen → fortsätt → lopp 2 räknas vidare på rätt poäng.
 - Detta är förberedelsen för att flytta spelet till GitHub Pages (profilen flyttas med en sparfil).
+
+## v16.13 – Liams vattenfarkoster: Hajbilen och Svävaren (2026-11-21)
+- **HAJBILEN** (design: Liam): ubåt på hjul som liknar en haj – blodröd mun med vassa tänder, cockpit med förare, öga med ögonfransar, ryggfena, viftande stjärtfena, hjul på fjädrar (stora fram, små bak) och en trappa till ingången under magen. Bubblor bakom.
+- **SVÄVAREN** (design: Liam): röd och gul svävare med flamma, glaskupol med förare (glasögon), grå luftkudde, orange propeller – och ett fiskespö där linan med kroken fladdrar efter i fartvinden (en riktig släpande lina i loppet och i staden).
+- Båda ritade ovanifrån och snett framifrån, med 🌊 i hörnet på bilkortet.
+- **Extra bra i vatten** (bilarna är annars lika snabba som alla andra):
+  - Pölar och saft: de halkar inte. De får en liten plask-turbo. Hajen dyker – bara ryggfenan med skum syns ovanför ytan. Svävaren får napp – en fisk sprattlar på kroken (NAPP! 🐟).
+  - Svävaren svävar också över is och sand utan att halka eller bromsas.
+  - Vågramper på STRANDEN: SURF! – extra turbo och längre hopp.
+  - STRANDEN har fått två tidvattenpölar.
+  - Turbostaden: båda kan köra ned i floden. Floden är snabbare än vägen (hajen 15 %, svävaren 10 %), en genväg över och längs stan. Vanliga bilar stoppas som förut.
+- Gäller även motståndare som kör dessa bilar.
+- Test: `tests/test_water.py`, bilder: `tests/render_water_cars.py`.
 
 ## v16.12 – Målport på minikartan, alltid senaste versionen (2026-10-21)
 - Minikartan: flaggan ersatt av en målport – rutig banderoll mellan två vita stolpar, tvärs över banan precis på mållinjen. Ritas ovanpå motståndarnas prickar men under spelarens.

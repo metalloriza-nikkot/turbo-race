@@ -248,6 +248,88 @@ const FRONT_CARS = {
     const on = Math.floor(t * 4) % 2; for (const s of [-1, 1]) { const lit = on ^ (s > 0); K.box(26, 30, s * 11 - 2, s * 11 + 2, 30 + b, 33 + b, lit ? '#ffd54f' : d.accent2 || '#ffb300'); if (lit) K.glow(28, s * 11, 33 + b, 12, '#ffb300', 0.7); }
     K.wheel(-26, 17, 8, 6, w, '#b0bec5'); K.wheel(-12, 17, 8, 6, w, '#b0bec5'); K.wheel(24, 17, 8, 6, w, '#b0bec5');
   },
+  shark(K, d, w, b, t) { // HAJBILEN (design: Liam) – haj-ubåt på fjädrande hjul, blodröd mun, cockpit, ögonfransar och en trappa till ingången
+    const c = K.c, G1 = fvHex(d.color), DK = fvHex(d.dark), BELLY = d.accent2 || '#eef3f6', wag = Math.sin(t * 7) * 4;
+    const spring = (x, y, z0, z1) => { c.strokeStyle = '#b0bec5'; c.lineWidth = 1.8; c.beginPath(); for (let k = 0; k <= 8; k++) { const p = fvP(x + (k % 2 ? 2.6 : -2.6), y, z0 + (z1 - z0) * k / 8); k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]); } c.stroke(); };
+    // bortre hjulen och fjädrarna
+    spring(20, -10, 9, 17 + b); spring(-18, -10, 6, 17 + b);
+    K.wheel(20, -12, 9, 6, w); K.wheel(-18, -11, 6, 5, w);
+    // kroppen: stationer längs x med (halvbredd, botten, mitt, topp)
+    const S = [[-40, 2.5, 23, 25, 28], [-26, 8, 18, 24, 33], [-8, 13, 15, 25, 37], [14, 13.5, 15, 25, 36], [30, 10.5, 16, 24, 33], [41, 5, 19, 23, 28]];
+    const zb = (s) => s[2] + b, zm = (s) => s[3] + b, zt = (s) => s[4] + b;
+    // stjärtfena (vertikal, viftar)
+    K.poly([[-38, 0, 25 + b], [-44, wag * 0.4, 26 + b], [-56, wag, 45 + b], [-48, wag * 0.6, 27 + b]], DK);
+    K.poly([[-38, 0, 24 + b], [-46, wag * 0.5, 24 + b], [-52, wag * 0.9, 13 + b]], DK);
+    for (let i = 0; i < S.length - 1; i++) {
+      const a = S[i], e = S[i + 1];
+      K.poly([[a[0], a[1] * 0.7, zb(a)], [e[0], e[1] * 0.7, zb(e)], [e[0], e[1], zm(e)], [a[0], a[1], zm(a)]], BELLY, 'rgba(0,0,0,0.25)', 0.8);
+      K.poly([[a[0], a[1], zm(a)], [e[0], e[1], zm(e)], [e[0], e[1] * 0.6, zt(e)], [a[0], a[1] * 0.6, zt(a)]], shade(G1, 0.85), 'rgba(0,0,0,0.25)', 0.8);
+      K.poly([[a[0], -a[1] * 0.6, zt(a)], [e[0], -e[1] * 0.6, zt(e)], [e[0], e[1] * 0.6, zt(e)], [a[0], a[1] * 0.6, zt(a)]], shade(G1, 1.05), 'rgba(0,0,0,0.25)', 0.8);
+    }
+    // nosen
+    const n = S[S.length - 1]; K.poly([[n[0], -n[1] * 0.7, zb(n)], [n[0], n[1] * 0.7, zb(n)], [n[0], n[1], zm(n)], [n[0], n[1] * 0.6, zt(n)], [n[0], -n[1] * 0.6, zt(n)], [n[0], -n[1], zm(n)]], shade(G1, 0.95));
+    // blodröd mun med tänder (öppen käke på sidan + fronten)
+    // käken: övre och nedre läpp möts långt bak, rött gap emellan, vita tänder upp och ned
+    const J = (f, up) => { const x = 41.3 - f * 15, y = 5 + f * 7, z = up ? 25.5 - f * 4.5 : 16.5 + f * 3.2; return [x, y, z + b]; };
+    const jaw = []; for (let k = 0; k <= 6; k++) jaw.push(J(k / 6, true)); for (let k = 6; k >= 0; k--) jaw.push(J(k / 6, false));
+    K.poly(jaw, d.accent || '#c62828', '#3e0d0d', 1.3);
+    K.poly([J(0.05, true), J(0.75, true), J(0.75, false), J(0.05, false)].map(p => [p[0], p[1] + 0.05, p[2]]).map((p, i) => i < 2 ? [p[0], p[1], p[2] - 1.6] : [p[0], p[1], p[2] + 1.6]), '#7f0000', null);
+    for (let k = 0; k < 6; k++) { const f0 = k / 6, f1 = (k + 1) / 6, fm = (f0 + f1) / 2, u0 = J(f0, true), u1 = J(f1, true), um = J(fm, true), l0 = J(f0, false), l1 = J(f1, false), lm = J(fm, false);
+      K.poly([u0, u1, [um[0], um[1] + 0.1, um[2] - 2.8 + f0]], '#fff', 'rgba(0,0,0,0.35)', 0.6); K.poly([l0, l1, [lm[0], lm[1] + 0.1, lm[2] + 2.4 - f0 * 0.5]], '#fff', 'rgba(0,0,0,0.35)', 0.6); }
+    K.disk('x', 41.3, -1, 20.5 + b, 3.6, d.accent || '#c62828', '#3e0d0d', 2.2);
+    // gälar
+    for (let k = 0; k < 3; k++) K.line([8 - k * 3.5, 13.6, 27 + b], [9 - k * 3.5, 13.6, 21 + b], 'rgba(40,50,60,0.6)', 1.3);
+    // bröstfena
+    K.poly([[6, 13.5, 21 + b], [-6, 13.5, 21 + b], [-10, 21, 11 + b]], DK);
+    // öga med ögonfransar
+    const blink = (t % 4.6) < 0.12; K.disk('y', 22, 13.6, 30 + b, 3, '#fff', '#222', blink ? 0.5 : 3);
+    if (!blink) K.disk('y', 23, 13.8, 30 + b, 1.5, '#111', null);
+    for (let k = -1; k <= 1; k++) K.line([22 + k * 1.8, 13.7, 33 + b], [22 + k * 2.8, 13.9, 36 + b], '#222', 1.1);
+    // cockpit med förare
+    K.poly([[17, 9, 33.5 + b], [33, 7.5, 31 + b], [33, 2, 34 + b], [17, 2, 37 + b]], 'rgba(129,212,250,0.95)', 'rgba(0,0,0,0.4)');
+    { const p = fvP(25, 5.5, 34.6 + b); c.fillStyle = '#ffcc80'; c.beginPath(); c.arc(p[0], p[1] - 2, 3.2, 0, TAU); c.fill(); c.fillStyle = '#6d4c41'; c.beginPath(); c.arc(p[0], p[1] - 3, 3.3, Math.PI, TAU); c.fill(); }
+    // ryggfena
+    K.poly([[6, 0, 36.5 + b], [-14, 0, 36 + b], [-12, 0, 53 + b]], DK);
+    K.line([4, 0.2, 37 + b], [-11, 0.2, 51 + b], 'rgba(255,255,255,0.4)', 1);
+    // trappa till ingången (under magen)
+    K.box(-7, 5, 4, 11, 5, 15 + b, shade(G1, 0.7)); for (let k = 0; k < 4; k++) K.line([-6, 11.1, 7 + k * 2.4], [4, 11.1, 7 + k * 2.4], '#37474f', 1.2);
+    // närmre fjädrar och hjul
+    spring(20, 14, 9, 16 + b); spring(-18, 13, 6, 17 + b);
+    K.wheel(20, 15, 9, 6, w); K.wheel(-18, 14, 6, 5, w);
+  },
+  hover(K, d, w, b, t) { // SVÄVAREN (design: Liam) – luftkudde, flamma, kupol, propeller och fiskespö med lina och krok
+    const c = K.c, h = 3 + Math.sin(t * 5) * 1.4 + b * 0.5, R = fvHex(d.color), Y = fvHex(d.accent || '#fdd835'), OR = fvHex(d.accent2 || '#fb8c00');
+    // fiskespö och lina som fladdrar bakåt (ritas först, bakom farkosten)
+    const tip = [-46, 15, 52 + h]; K.line([-28, 9, 22 + h], tip, '#6d4c41', 2);
+    c.strokeStyle = '#eceff1'; c.lineWidth = 1.1; c.beginPath(); let last;
+    for (let k = 0; k <= 14; k++) { const s = k / 14, p = fvP(tip[0] - s * 34, tip[1] + s * 12 + Math.sin(t * 9 + s * 7) * 3.5 * s, tip[2] - s * 34 + Math.sin(t * 7 + s * 5) * 4 * s); k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]); last = p; }
+    c.stroke(); hookShape(c, last[0], last[1], Math.PI / 2 + Math.sin(t * 7) * 0.4, 1.1);
+    // luftkudde
+    K.hull([-36, 36, -22, 22], [-34, 34, -21, 21], h - 3, h + 5, '#8f9499', { top: '#a7acb1' });
+    for (let x = -30; x <= 30; x += 6) K.line([x, 22, h - 2.5], [x, 22, h + 4.5], 'rgba(0,0,0,0.3)', 1);
+    // propellerkåpa bak
+    K.line([-30, -8, 16 + h], [-38, -8, 22 + h], '#455a64', 2); K.line([-30, 8, 16 + h], [-38, 8, 22 + h], '#455a64', 2);
+    K.disk('x', -38, 0, 24 + h, 14, OR); K.disk('x', -37.6, 0, 24 + h, 11, '#3e2723', null);
+    for (let k = 0; k < 3; k++) { const a = t * 30 + k * TAU / 3; K.line([-37.4, 0, 24 + h], [-37.4, Math.cos(a) * 10, 24 + h + Math.sin(a) * 10], 'rgba(255,255,255,0.75)', 2.4); }
+    K.disk('x', -37.3, 0, 24 + h, 2.4, '#bdbdbd', null);
+    // kropp: röd nedre, gul övre
+    K.hull([-30, 30, -17, 17], [-28, 28, -15, 15], h + 5, h + 14, R);
+    K.hull([-24, 26, -15, 15], [-18, 21, -11, 11], h + 14, h + 19, Y);
+    // flamma på sidan
+    { const cx = -4, cz = h + 10, pts = []; for (let k = 0; k < 14; k++) { const a = k / 14 * TAU, r = (k % 2 ? 3.2 : 5.5); pts.push([cx + Math.cos(a) * r * 1.3, 17.2, cz + Math.sin(a) * r * 0.75]); } K.poly(pts, '#ff9800', '#c62828', 1.4); }
+    for (const s of [-1, 1]) K.disk('x', 30.2, s * 10, h + 9.5, 2.3, '#fffbe0', '#9e9e9e');
+    // kupol med förare
+    const base = fvP(8, 0, h + 19), hp = fvP(9, 2, h + 24);
+    // förare (huvud med glasögon) inne i kupolen
+    c.fillStyle = '#ffe0b2'; c.beginPath(); c.arc(hp[0], hp[1], 5, 0, TAU); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 0.8; c.stroke();
+    c.strokeStyle = '#37474f'; c.lineWidth = 1.2; c.beginPath(); c.arc(hp[0] - 2.2, hp[1] - 0.8, 1.7, 0, TAU); c.moveTo(hp[0] + 3.6, hp[1]); c.arc(hp[0] + 1.9, hp[1], 1.7, 0, TAU); c.stroke();
+    c.fillStyle = '#111'; c.beginPath(); c.arc(hp[0] - 0.1, hp[1] + 2.6, 1.1, 0, Math.PI); c.fill();
+    // kupolen: glas (halvellips) med blänk
+    c.fillStyle = 'rgba(179,229,252,0.45)'; c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 1.1;
+    c.beginPath(); c.ellipse(base[0], base[1], 15, 6.5, -0.2, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(base[0], base[1] - 0.5, 14.5, 15, -0.2, Math.PI * 1.02, Math.PI * 1.98); c.fill(); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1.8; c.beginPath(); c.ellipse(base[0], base[1] - 0.5, 11, 11.5, -0.2, Math.PI * 1.2, Math.PI * 1.45); c.stroke();
+  },
   amb(K, d, w, b, t) { K.wheel(-20, -16, 8, 6, w); K.wheel(22, -16, 8, 6, w); K.box(-36, 36, -16, 16, 6 + b, 30 + b, '#fafafa'); K.box(-14, 10, 16.1, 16.4, 14 + b, 24 + b, '#e53935'); K.box(-6, 2, 16.5, 16.6, 10 + b, 28 + b, '#e53935'); K.poly([[36.1, -12, 20 + b], [36.1, 12, 20 + b], [36.1, 12, 27 + b], [36.1, -12, 27 + b]], '#233a55'); K.wheel(-20, 16, 8, 6, w); K.wheel(22, 16, 8, 6, w); },
 };
 // Rita en bil snett framifrån. (0,0) = marken mitt under bilen. Bilen är ca 100 enheter bred. o: { speed (0–1.5), boost, still }
@@ -262,12 +344,14 @@ function drawCarFront(ctx, d, time, o = {}) {
   if (sp) {
     fvSpeedLines(ctx, t, 7, sp);
     // damm från bakhjulen
-    const dust = d.type === 'robo' ? null : ['#d7ccc8', '#bcaaa4', '#efebe9'];
+    const dust = d.type === 'robo' || d.type === 'hover' ? null : ['#d7ccc8', '#bcaaa4', '#efebe9'];
     if (dust) { const p1 = fvP(-22, 18, 0), p2 = fvP(-22, -16, 0); fvPuffs(ctx, t, p1[0], p1[1], { n: 6, col: dust, len: 46, r0: 3, r1: 9, a: 0.55, rate: 1.6 * sp }); fvPuffs(ctx, t + 0.37, p2[0], p2[1], { n: 4, col: dust, len: 36, r0: 2, r1: 7, a: 0.4, rate: 1.6 * sp }); }
     // bilens egna avgaser
     const ex = d.type === 'rc' ? fvP(-42, 0, 15) : d.type === 'recycle' ? fvP(14, -10.5, 45) : d.type === 'robo' ? fvP(-30, 0, 9) : fvP(-34, 8, 9);
     if (d.trail === 'fire') { for (const s of [-8, 0, 8]) { const q = fvP(-43, s, 15.5); fvPuffs(ctx, t + s, q[0], q[1], { n: 7, fire: true, len: o.boost ? 60 : 40, r0: 3, r1: o.boost ? 9 : 6, a: 0.95, rate: 2.4, spread: 3, rise: 2 }); } }
     else if (d.trail === 'bio') fvPuffs(ctx, t, ex[0], ex[1], { n: 8, col: ['#9ccc65', '#aed581', '#66bb6a'], len: 50, r0: 3, r1: 9, a: 0.75, rate: 0.9, spread: 8, rise: 16, leaf: true });
+    else if (d.trail === 'bubbles') { const q = fvP(-50, 2, 26); fvPuffs(ctx, t, q[0], q[1], { n: 8, col: ['rgba(225,245,254,0.9)', 'rgba(129,212,250,0.9)'], len: 40, r0: 1.5, r1: 4.5, a: 0.85, rate: 1.1, spread: 7, rise: 22 }); }
+    else if (d.trail === 'mist') { for (const s of [-1, 1]) { const q = fvP(-30, s * 20, 1); fvPuffs(ctx, t + s, q[0], q[1], { n: 8, col: ['#e1f5fe', '#ffffff', '#b3e5fc'], len: 50, r0: 3, r1: 10, a: 0.6, rate: 1.8 * sp, spread: 9, rise: 3 }); } const q = fvP(-42, 0, 24); fvPuffs(ctx, t, q[0], q[1], { n: 5, col: '#eceff1', len: 34, r0: 2, r1: 6, a: 0.3, rate: 2.4, spread: 10, rise: 0 }); }
     else if (d.type === 'robo') fvPuffs(ctx, t, ex[0], ex[1], { n: 6, col: [d.accent || '#27e6ff', '#e0f7fa'], len: 40, r0: 2, r1: 5, a: 0.7, rate: 2.2, spread: 2, rise: 0 });
     else if (d.type !== 'tub') fvPuffs(ctx, t, ex[0], ex[1], { n: 5, col: '#cfd8dc', len: 30, r0: 1.5, r1: 4.5, a: 0.35, rate: 1.3, rise: 5 });
     if (o.boost && d.trail !== 'fire') { const q = fvP(-36, 0, 12); fvPuffs(ctx, t, q[0], q[1], { n: 8, fire: true, len: 55, r0: 3, r1: 8, a: 0.9, rate: 2.6, spread: 4, rise: 1 }); }
